@@ -1,5 +1,13 @@
 # Thread for Codex · 版本记录 / Release notes
 
+## 1.0.3
+
+- 在新项目或已有项目的聊天中发送「将此线程作为该项目的总讨论」即可启动。也可以在同一条消息里附上第一个任务。原来的技能命令仍然可用。
+- 修复聊天中「项目讨论串」入口下方的大片留白。单行入口的初始高度为 49 像素，内容增多时可随之展开。
+
+- In a new or existing project, say “Use this chat as the main discussion for this project.” You can include the first task in the same message. The original skill command still works.
+- Fixed excess space below the project threads card in chat. The card starts at 49 pixels and grows with its content.
+
 ## 1.0.2
 
 插件图标换为「换乘线」。深蓝底上的三条线路与白色换乘环呼应项目总讨论与执行串。

@@ -61,7 +61,7 @@ def resource_content(uri):
             'openai/ui': {'availableDisplayModes': modes, 'preferredDisplayMode': modes[0]}}
     if entry:
         meta.update({'openai/widgetShowCodexWidgetInline': True, 'openai/widgetHideAttribution': True,
-                     'openai/widgetHeightHint': 68})
+                     'openai/widgetHeightHint': 49, 'openai/widgetMinFrameHeight': 0})
     page = (ROOT / 'assets/threads.html').read_text(encoding='utf-8')
     page = page.replace('__DIRECTOR_VIEW__', 'entry' if entry else 'panel').replace('__DIRECTOR_VERSION__', VERSION)
     return {'uri': uri, 'mimeType': MIME, 'text': page, '_meta': meta}

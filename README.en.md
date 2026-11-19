@@ -26,7 +26,7 @@ You need macOS, a signed-in Codex desktop app, a Codex CLI that supports `codex 
 2. Open a new or existing project. In the chat you want to use as the main discussion, send
 
    ```text
-   $codex-director:codex-director Create or reuse project threads as needed.
+   Use this chat as the main discussion for this project.
    ```
 
 3. Give it a task. For example, “Ask the route planner for two weekend routes and the map thread to check the stops.” On first launch, the plugin pins the main chat and opens the project panel. Use the **项目讨论串** entry in that chat to reopen it later.
