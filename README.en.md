@@ -5,6 +5,8 @@
 
 [中文](README.md) · English
 
+**[Download for Windows / macOS (ZIP)](https://github.com/ylimingtju/thread-for-codex/releases/latest/download/thread-for-codex.zip)** · [Installation instructions](#install-and-start)
+
 ![Three colored threads extend from a single reel](docs/images/threads-cover.jpg)
 
 Thread for Codex adds a project thread panel to Codex for macOS and Windows. For a city walking guide, you could keep editorial decisions in the main chat, ask one thread to plan the route, and ask another to check the map. When the route planner needs you to choose between the riverfront and the old town, its question appears in the sidebar. Open the thread to answer, then return to the main chat for the summary.

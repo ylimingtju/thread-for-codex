@@ -1,6 +1,6 @@
 # Thread for Codex · 版本记录 / Release notes
 
-## Unreleased
+## 1.0.4
 
 支持 Windows 版 Codex 桌面端。安装器可使用桌面端自带的命令行，并将面板绑定到安装时使用的 Python。面板支持中文任务数据和通过 Windows 打开原生聊天。
 

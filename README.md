@@ -5,6 +5,8 @@ Inspired by Claude Projects, Thread for Codex lets you delegate tasks from one p
 
 中文 · [English](README.en.md)
 
+**[下载 Windows / macOS 安装包（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/latest/download/thread-for-codex.zip)** · [安装说明](#安装与启动)
+
 ![三股彩线从同一个线轴延伸开来](docs/images/threads-cover.jpg)
 
 Thread for Codex 是适用于 macOS 和 Windows 的 Codex 项目讨论串插件。比如做一份城市步行指南，可以在总讨论里定方向，让一个串规划路线、另一个串核对地图。路线串需要你选河畔还是老城时，问题会直接出现在右侧。点标题答复，再回总讨论看汇总。
