@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import secrets
 import sqlite3
+import stat
 import sys
 import time
 from uuid import UUID
@@ -32,7 +33,16 @@ def readonly(path):
 def write_registry():
     path = panel_db()
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    os.close(os.open(path, os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600))
+    if sys.platform == "win32":
+        # O_NOFOLLOW is unavailable on Windows. Create exclusively or check the existing file.
+        try:
+            os.close(os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))
+        except FileExistsError:
+            info = path.lstat()
+            if not stat.S_ISREG(info.st_mode) or info.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT:
+                raise OSError("面板数据库路径必须指向普通文件。") from None
+    else:
+        os.close(os.open(path, os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600))
     with closing(sqlite3.connect(path, timeout=5)) as db, db:
         db.row_factory = sqlite3.Row
         db.execute("BEGIN IMMEDIATE")
@@ -166,7 +176,7 @@ def find_worker(db, owner, thread_id, pending_id):
 
 def pending_binding(thread_id):
     try:
-        data = json.loads((home() / ".codex-global-state.json").read_text())
+        data = json.loads((home() / ".codex-global-state.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
     matches = set()
@@ -529,14 +539,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["init", "track", "update", "show"])
     parser.add_argument("payload", nargs="?")
+    parser.add_argument("--stdin", action="store_true", help="从标准输入读取 UTF-8 标题或 JSON")
     args = parser.parse_args()
+    if args.stdin and (args.payload is not None or args.action == "show"):
+        parser.error("--stdin 仅用于 init、track 或 update，且不能和位置参数一起使用。")
+    raw = sys.stdin.buffer.read().decode("utf-8") if args.stdin else args.payload
     actor = uuid_text(os.environ.get("CODEX_THREAD_ID"))
     if args.action == "show":
         result = snapshot(actor)
     elif args.action == "init":
-        result = initialize(actor, args.payload)
+        result = initialize(actor, raw)
     else:
-        payload = json.loads(args.payload or "{}")
+        payload = json.loads(raw or "{}")
         if not isinstance(payload, dict):
             raise ValueError("参数应为 JSON 对象。")
         result = (track if args.action == "track" else update)(actor, **payload)

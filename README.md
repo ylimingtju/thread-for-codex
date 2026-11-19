@@ -7,7 +7,7 @@ Inspired by Claude Projects, Thread for Codex lets you delegate tasks from one p
 
 ![三股彩线从同一个线轴延伸开来](docs/images/threads-cover.jpg)
 
-Thread for Codex 是 macOS 版 Codex 的项目讨论串插件。比如做一份城市步行指南，可以在总讨论里定方向，让一个串规划路线、另一个串核对地图。路线串需要你选河畔还是老城时，问题会直接出现在右侧。点标题答复，再回总讨论看汇总。
+Thread for Codex 是适用于 macOS 和 Windows 的 Codex 项目讨论串插件。比如做一份城市步行指南，可以在总讨论里定方向，让一个串规划路线、另一个串核对地图。路线串需要你选河畔还是老城时，问题会直接出现在右侧。点标题答复，再回总讨论看汇总。
 
 ![浅色面板显示待答问题和进展，深色面板展开各模型的用量](docs/images/panel-preview.png)
 
@@ -15,13 +15,16 @@ Thread for Codex 是 macOS 版 Codex 的项目讨论串插件。比如做一份�
 
 ## 安装与启动
 
-需要 macOS、已登录的 Codex 桌面端、支持 `codex plugin` 的 Codex 命令行，以及 Python 3.9 或以上。Python 部分只使用标准库。
+需要已登录的 Codex 桌面端、支持 `codex plugin` 的 Codex 命令行，以及 Python 3.9 或以上。Python 部分只使用标准库。
 
-1. 将仓库或发行 ZIP 解压到一个准备长期保留的目录，在项目根目录运行：
+1. 克隆仓库或解压发行 ZIP，在项目根目录运行对应命令。macOS 用户请选一个准备长期保留的目录。
 
-   ```sh
-   python3 install.py
-   ```
+   | 系统 | 安装命令 |
+   | --- | --- |
+   | Windows PowerShell | `py -3 .\install.py` |
+   | macOS | `python3 install.py` |
+
+   Windows 上也可用 `python .\install.py`，或使用已有 Python 的完整路径，例如 `& 'C:\Python312\python.exe' .\install.py`。安装器优先使用 Microsoft Store 版 Codex 自带的命令行，再查找 PATH 中的 `codex.exe` 和常见的独立安装路径。也可以加 `--codex 'C:\path\to\codex.exe'` 手动指定。
 
 2. 打开新项目或已有项目，进入想用作总讨论的聊天，发送：
 
@@ -33,7 +36,7 @@ Thread for Codex 是 macOS 版 Codex 的项目讨论串插件。比如做一份�
 
 新建总讨论时，如果你没有选择推理强度，插件默认使用 `xhigh`（模型支持时）。已有聊天沿用当前设置。你可以随时调整强度，各档都能正常派工、追问和验收。
 
-从旧版升级时，将新版文件（含隐藏目录）复制到原安装目录，再运行 `python3 install.py`。通过 Git 安装的用户可先在原目录运行 `git pull --ff-only`。
+升级时，在更新后的源码目录重新运行同一安装命令。通过 Git 安装的用户可使用 `git pull --ff-only` 更新源码。Windows 安装器会在 Codex 数据目录下生成本机插件源，并记录安装所用的 Python 路径。移动或更换 Python 后，用新路径重新运行安装程序。
 
 ## 在侧栏里能做什么
 
@@ -50,7 +53,7 @@ Thread for Codex 是 macOS 版 Codex 的项目讨论串插件。比如做一份�
 
 面板记录保存在 `~/.codex/codex-director/panel.sqlite3`；设置了 `CODEX_HOME` 时使用相应目录。面板从 Codex 本机记录读取任务状态和 Token 用量，刷新时无需调用模型。具体数据范围见 [隐私说明](PRIVACY.md)。
 
-如果装过作者原版，安装器会保留它并启用 Thread for Codex。要切回原版，在同一目录运行 `python3 install.py --restore-original`。若已打开的 Codex 仍显示旧插件入口，保存工作后重新打开应用。
+如果装过作者原版，安装器会保留它并启用 Thread for Codex。要切回原版，在安装命令后加 `--restore-original`。若已打开的 Codex 仍显示旧插件入口，保存工作后重新打开应用。
 
 ## 来源与许可
 

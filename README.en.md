@@ -7,7 +7,7 @@
 
 ![Three colored threads extend from a single reel](docs/images/threads-cover.jpg)
 
-Thread for Codex adds a project thread panel to Codex for macOS. For a city walking guide, you could keep editorial decisions in the main chat, ask one thread to plan the route, and ask another to check the map. When the route planner needs you to choose between the riverfront and the old town, its question appears in the sidebar. Open the thread to answer, then return to the main chat for the summary.
+Thread for Codex adds a project thread panel to Codex for macOS and Windows. For a city walking guide, you could keep editorial decisions in the main chat, ask one thread to plan the route, and ask another to check the map. When the route planner needs you to choose between the riverfront and the old town, its question appears in the sidebar. Open the thread to answer, then return to the main chat for the summary.
 
 ![The light panel shows a question and work in progress. The dark panel shows token counts by model.](docs/images/panel-preview.png)
 
@@ -15,13 +15,16 @@ Thread for Codex adds a project thread panel to Codex for macOS. For a city walk
 
 ## Install and start
 
-You need macOS, a signed-in Codex desktop app, a Codex CLI that supports `codex plugin`, and Python 3.9 or later. The plugin uses only the Python standard library.
+You need a signed-in Codex desktop app, a Codex CLI that supports `codex plugin`, and Python 3.9 or later. The plugin uses only the Python standard library.
 
-1. Clone the repository or extract the release ZIP to a folder you plan to keep. From its root, run
+1. Clone the repository or extract the release ZIP. On macOS, choose a folder you plan to keep. Run the command for your system from the source folder.
 
-   ```sh
-   python3 install.py
-   ```
+   | System | Install command |
+   | --- | --- |
+   | Windows PowerShell | `py -3 .\install.py` |
+   | macOS | `python3 install.py` |
+
+   On Windows, you can also run `python .\install.py` or use the full path to Python, for example `& 'C:\Python312\python.exe' .\install.py`. The installer looks for `codex.exe` in the Microsoft Store edition of Codex first, then in PATH and the usual standalone CLI location. Use `--codex 'C:\path\to\codex.exe'` to select a specific executable.
 
 2. Open a new or existing project. In the chat you want to use as the main discussion, send
 
@@ -33,7 +36,7 @@ You need macOS, a signed-in Codex desktop app, a Codex CLI that supports `codex 
 
 A new main chat defaults to `xhigh` reasoning if the model supports it and you have not selected an effort. An existing chat keeps its current setting. You can change the effort at any time and still assign work, follow up, and accept results.
 
-To update, copy the new files, including hidden directories, into the original installation folder and rerun `python3 install.py`. If you cloned the repository, run `git pull --ff-only` in that folder first.
+To update, rerun the install command from the updated source folder. If you cloned the repository, run `git pull --ff-only` to update it first. The Windows installer prepares a local marketplace in the Codex data directory and records the Python executable used for installation. If you move or replace Python, rerun the installer with its new path.
 
 ## Using the sidebar
 
@@ -50,7 +53,7 @@ Each main chat lists the threads it assigned work to, even if another project ch
 
 The panel stores its registry at `~/.codex/codex-director/panel.sqlite3`, or under `CODEX_HOME` if set. It reads task status and token counts from Codex's local records. Refreshing the panel does not call a model. See the [privacy notes](PRIVACY.md).
 
-If the original plugin is installed, the installer keeps it and enables Thread for Codex. To switch back, run `python3 install.py --restore-original` from the same folder. If an open Codex window still shows the old plugin entry, save your work and reopen the app.
+If the original plugin is installed, the installer keeps it and enables Thread for Codex. To switch back, add `--restore-original` to the install command. If an open Codex window still shows the old plugin entry, save your work and reopen the app.
 
 ## Credits and license
 

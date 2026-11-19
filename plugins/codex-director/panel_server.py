@@ -1,5 +1,6 @@
 """MCP Apps conversation panel for local Director chats."""
 import json
+import os
 from pathlib import Path
 import sqlite3
 import subprocess
@@ -9,7 +10,7 @@ from uuid import UUID
 import panel_state
 
 ROOT = Path(__file__).resolve().parent
-VERSION = json.loads((ROOT / '.codex-plugin/plugin.json').read_text())['version']
+VERSION = json.loads((ROOT / '.codex-plugin/plugin.json').read_text(encoding='utf-8'))['version']
 MIME = 'text/html;profile=mcp-app'
 ENTRY = 'ui://director-panel/entry.html'
 PANEL = 'ui://director-panel/threads.html'
@@ -81,9 +82,11 @@ def open_registered(data, target):
         raise ValueError('此聊天不属于当前面板，或已经归档。')
     url = 'codex://threads/' + uid
     try:
-        # macOS routes this local deep link to the registered Codex desktop app.
-        subprocess.run(['/usr/bin/open', '-b', 'com.openai.codex', url], check=True,
-                       capture_output=True, timeout=5)
+        if sys.platform == 'win32':
+            os.startfile(url)
+        else:
+            subprocess.run(['/usr/bin/open', '-b', 'com.openai.codex', url], check=True,
+                           capture_output=True, timeout=5)
         opened = True
     except (subprocess.SubprocessError, OSError):
         opened = False
@@ -168,4 +171,6 @@ def serve():
 
 
 if __name__ == '__main__':
+    sys.stdin.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding='utf-8')
     serve()

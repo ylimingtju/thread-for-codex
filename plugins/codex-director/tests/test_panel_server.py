@@ -1,4 +1,4 @@
-"""Run with python3 -B tests/test_panel_server.py from the plugin directory."""
+"""Run with Python from the plugin directory: python -B tests/test_panel_server.py."""
 from pathlib import Path
 import subprocess
 import sys
@@ -18,7 +18,9 @@ def check():
     assert server.TOOLS['show_panel']['_meta']['openai/ui']['entrypoints'] == [{'type': 'thread'}]
     assert server.TOOLS['open_thread']['_meta']['ui']['visibility'] == ['app']
     assert panel['mimeType'] == server.MIME and '__DIRECTOR_' not in panel['text']
-    with patch.object(server.panel_state, 'snapshot', return_value=data) as read, patch.object(subprocess, 'run') as launch:
+    with patch.object(server.sys, 'platform', 'darwin'), patch.object(
+        server.panel_state, 'snapshot', return_value=data
+    ) as read, patch.object(subprocess, 'run') as launch:
         result = server.call({'name': 'open_thread', 'arguments': {'view_key': 'test', 'thread_id': director}, '_meta': {'threadId': worker}})
         read.assert_called_with(actor=worker, view_key='test', include_usage=False)
         assert result['structuredContent']['opened']
@@ -35,6 +37,19 @@ def check():
         assert server.open_registered(data, worker) == {'opened': False, 'url': 'codex://threads/' + worker, 'title': '核对模型'}
         data['threads'][0]['status'] = 'archived'
         assert server.call({'name': 'open_thread', 'arguments': {'thread_id': worker}, '_meta': {'threadId': worker}})['isError']
+
+    with patch.object(server.sys, 'platform', 'win32'), patch.object(server.os, 'startfile', create=True) as launch:
+        result = server.open_registered(data, director)
+        assert result == {'opened': True, 'url': 'codex://threads/' + director, 'title': '总讨论'}
+        try:
+            server.open_registered(data, worker)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('archived thread opened')
+        launch.assert_called_once_with('codex://threads/' + director)
+        launch.side_effect = OSError()
+        assert not server.open_registered(data, director)['opened']
 
 
 if __name__ == '__main__':

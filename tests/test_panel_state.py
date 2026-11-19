@@ -4,6 +4,7 @@ import json
 from os import environ
 from pathlib import Path
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -26,6 +27,18 @@ def create_indexes(directory, threads):
 
 
 class PanelLifecycle(unittest.TestCase):
+    def test_utf8_payload_over_stdin(self):
+        root = str(uuid4())
+        script = Path(state.__file__)
+        with tempfile.TemporaryDirectory() as directory:
+            create_indexes(directory, [(root, "user", None)])
+            env = dict(environ, CODEX_HOME=directory, CODEX_THREAD_ID=root)
+            result = subprocess.run(
+                [sys.executable, "-B", "-X", "utf8", str(script), "init", "--stdin"],
+                input='总讨论 "路线" — 复核\n', capture_output=True, encoding="utf-8", env=env, check=True,
+            )
+            self.assertEqual(json.loads(result.stdout)["director_title"], '总讨论 "路线" — 复核')
+
     def test_lifecycle(self):
         root, worker, other, ordinary, wrong = [str(uuid4()) for _ in range(5)]
         with tempfile.TemporaryDirectory() as directory, patch.dict(environ, {"CODEX_HOME": directory}):
