@@ -2,6 +2,19 @@
 
 面板按总讨论与执行串的真实 ID 关联。登记、更新和显示面板都属于协调工作。运行命令时，用当前加载的 `skills/codex-director` 目录向上两级作为插件根目录，调用其中的 `panel_state.py`。在执行操作的原生聊天内运行，保留宿主提供的 `CODEX_THREAD_ID`。命令中的 JSON 作为一个参数传入，使用安全的参数传递方式，尤其是标题、问题或摘要来自用户时。
 
+下文命令以 macOS 为例。在 Windows 上，从已加载的插件根目录读取 `.mcp.json`，使用其中为面板配置的 Python 完整路径。PowerShell 中，直接传递标题或 JSON 字符串给标准输入，避免原生命令的参数解析改写双引号和非 ASCII 字符。例如，把 `$pluginRoot` 设为插件根目录，再运行：
+
+```powershell
+$config = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $pluginRoot '.mcp.json') | ConvertFrom-Json
+$python = $config.mcpServers.'director-panel'.command
+$state = Join-Path $pluginRoot 'panel_state.py'
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = $OutputEncoding
+'总讨论标题' | & $python -B -X utf8 $state init --stdin
+```
+
+执行 `track` 或 `update` 时，将字段构造成 PowerShell 哈希表，经 `ConvertTo-Json -Compress` 后通过管道传给对应操作的 `--stdin`。执行 `show` 时直接运行 `& $python -B -X utf8 $state show`。
+
 ## Director
 
 1. **初始化。** 首次启动时，按真实 ID 读取当前聊天在 Codex 中的名称并置顶；仅首次新建且未选定名称时设置默认标题，运行 `python3 -B <插件根>/panel_state.py init '总讨论标题'`。用返回的 `view_key` 调用 `director-panel` 的 `show_entry` 展示入口，再调用 `show_panel` 打开右侧面板。若已有本串登记，沿用原配对和执行串。日常对话沿用面板，用户主动关闭后，等用户要求再打开。只发启动句时，就在这里等待；附有任务时直接处理。
