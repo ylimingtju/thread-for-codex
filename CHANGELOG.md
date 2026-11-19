@@ -1,5 +1,11 @@
 # Thread for Codex · 版本记录 / Release notes
 
+## 1.0.1
+
+总讨论在所有受支持的推理强度下都可以派工、追问和验收。新建总讨论时仍默认使用 `xhigh`（模型支持时）。在 Codex 中手动调整强度后，继续对话或收到执行串回报时都会沿用当前选择。
+
+The main chat can assign tasks, follow up, and accept results at any supported reasoning effort. New main chats still default to `xhigh` where supported. Continuing a chat or receiving a worker callback preserves the effort you selected in Codex.
+
 ## 1.0.0
 
 ### 中文

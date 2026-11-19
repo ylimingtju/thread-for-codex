@@ -9,10 +9,10 @@ Use this checklist when changing Director routing, monitoring, workflow-skill ac
    - If the loaded path/version is older than the expected release, the ledger records `stale-director-runtime:<version-or-path>`.
    - Existing threads are not assumed to reload a newer plugin version unless the loaded path/version proves it.
 
-2. Parent Director effort does not silently downgrade.
-   - Director-owned continuations, heartbeats, and worker callbacks into the Director pass `thinking: "xhigh"` when thinking selection is exposed.
-   - If the active Director turn is known to be below `xhigh`, it only performs safety bookkeeping: title reads, readback, pending-worktree pickup, monitor recovery, or blocker reporting.
-   - A downgraded Director turn records `director-effort-blocked:<effort>` before any planning, dispatch, steering, acceptance, or completion verdict.
+2. The Director respects the user's reasoning effort.
+   - A new Director with no user selection defaults to `xhigh` when supported. An existing chat keeps its current selection on activation.
+   - With `low`, `medium`, `high`, or any other supported choice, the Director can plan, dispatch, steer, review, and complete work. The same actions are available when the host does not report the current effort.
+   - After a user changes effort, continuations, heartbeats, and worker callbacks inherit the Director's current setting. A callback from a worker running at a different effort preserves the Director's selection.
 
 3. Chat names follow Codex.
    - Plugin-link-only `[@codex-director](plugin://codex-director@director-local)`, `$codex-director:codex-director`, plugin/default starter prompts, and plain Director requests all load the main Director skill before ready/loaded prose.

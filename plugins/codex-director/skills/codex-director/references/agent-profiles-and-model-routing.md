@@ -14,7 +14,7 @@ Helper outputs are advisory until the owning worker verifies them, reconciles th
 
 Director-created workers use the latest non-Spark main model exposed by the active schema by default, for example `gpt-5.5` when it is listed. Never choose older main-family model ids such as `gpt-5.4` when a newer main model is available. The only older-numbered model exception is `gpt-5.3-codex-spark`, because Spark's latest available line is 5.3, and only when Spark is the right fit for a narrow scout, status/probe, optional artifact packaging, bounded research, Browser automation runner, or mechanical low-risk helper lane. Spark is never an authority lane.
 
-The Director/coordinator thread itself defaults to latest-main/`xhigh`: routing, decomposition, worker launch contracts, project target resolution, review/oracle decisions, evidence reconciliation, integration decisions, and completion/blocker calls are the Director's real work. This default applies to the Director thread, not to every worker it launches.
+A new Director defaults to the latest main model and to `xhigh` reasoning when the user has not chosen an effort and the model supports it. Existing Directors keep their current effort for routing, dispatch, review, and completion. All supported efforts allow the full coordination workflow, even when the runtime does not expose the setting.
 
 Implementation and code-writing workers default to latest-main/high. Use Spark only for mechanical low-blast-radius edits with obvious verification, and use low/Spark only for status, lookup, or narrow read-only probes. Escalate implementation to latest-main/xhigh for architecture, auth/security, data models/migrations, production config, concurrency, payments/permissions, cross-repo contracts, or hard-to-reverse decisions.
 
@@ -109,7 +109,7 @@ Use the latest non-Spark main model exposed by the active schema for:
 - security/auth/data/migration judgment
 - deciding whether work is complete or blocked
 
-## Effort Levels
+## Worker and Helper Effort Levels
 
 Use `low` for:
 
@@ -142,7 +142,6 @@ Use `high` for:
 
 Use `xhigh` for:
 
-- the Director/coordinator thread's default routing, decomposition, worker launch contracts, project target resolution, review/oracle decisions, ledger reconciliation, and final acceptance
 - final plan review before complex implementation
 - auth/security/data/migration review
 - architecture, concurrency, payments, permissions, production config, or cross-repo contract changes

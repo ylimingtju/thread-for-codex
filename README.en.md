@@ -31,6 +31,10 @@ You need macOS, a signed-in Codex desktop app, a Codex CLI that supports `codex 
 
 3. Give it a task. For example, “Ask the route planner for two weekend routes and the map thread to check the stops.” On first launch, the plugin pins the main chat and opens the project panel. Use the **项目讨论串** entry in that chat to reopen it later.
 
+A new main chat defaults to `xhigh` reasoning if the model supports it and you have not selected an effort. An existing chat keeps its current setting. You can change the effort at any time and still assign work, follow up, and accept results.
+
+To update, copy the new files, including hidden directories, into the original installation folder and rerun `python3 install.py`. If you cloned the repository, run `git pull --ff-only` in that folder first.
+
 ## Using the sidebar
 
 | What you want to do | Where to go |
