@@ -1,5 +1,17 @@
 # Thread for Codex · 版本记录 / Release notes
 
+## 1.1.0 · macOS
+
+[下载 macOS v1.1.0 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-macos.zip) · [下载 Windows v1.0.4 / Download for Windows](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)
+
+Windows 当前发行版为 v1.0.4。momo-land 完成真机确认后再发布 Windows v1.1.0。 [更新说明、macOS 实测与使用指南](docs/release-v1.1.0.md#zh)
+
+Windows stays on v1.0.4 until momo-land confirms v1.1.0 on a Windows machine. [Release notes, macOS benchmarks and user guide](docs/release-v1.1.0.md#en)
+
+总讨论直接回答有明确出处的已有结论，把需要新判断或修改的工作分派给执行串。续派时沿用原串上下文，回报时概括本轮结果并保留原串入口。九个专项技能仍可按需调用，普通派工省去流程声明和重复记录。新旧执行串在每条面向用户的答复末尾提供「← 返回总讨论」链接。
+
+The main chat answers questions about established results and delegates work that calls for a new judgment or a change. Follow-ups reuse the original thread. The main chat summarizes the current assignment and links to the source when helpful. All nine specialist skills remain available. Routine assignments can proceed without extra workflow messages or duplicate records. Each reply to the user in a new or existing worker chat ends with a link back to its main discussion.
+
 ## 1.0.4
 
 支持 Windows 版 Codex 桌面端。安装器可使用桌面端自带的命令行，并将面板绑定到安装时使用的 Python。面板支持中文任务数据和通过 Windows 打开原生聊天。

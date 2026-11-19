@@ -76,6 +76,11 @@ def windows_marketplace():
         server["command"] = sys.executable
         server["env_vars"].extend(["USERPROFILE", "SYSTEMROOT"])
         config.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        hooks_file = stage / PLUGIN / "hooks" / "hooks.json"
+        hooks = json.loads(hooks_file.read_text(encoding="utf-8"))
+        footer_hook = hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]
+        footer_hook["commandWindows"] = f'"{sys.executable}" -B -X utf8 "%PLUGIN_ROOT%/worker_reply.py"'
+        hooks_file.write_text(json.dumps(hooks, indent=2) + "\n", encoding="utf-8")
 
         if market.exists():
             market.rename(backup)

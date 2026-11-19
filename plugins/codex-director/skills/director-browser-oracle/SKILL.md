@@ -1,64 +1,14 @@
 ---
 name: director-browser-oracle
-description: Runs the Codex Director Browser ChatGPT Pro oracle lane for external second-opinion review through the signed-in browser. Use when a Director brief explicitly invokes $codex-director:director-browser-oracle for delegated oracle review, Pro-only comparison, external critique, or Browser-mediated plan/result validation.
+description: Use for a specifically authorized external second opinion through a signed-in browser when the user or a Director assignment explicitly requests $codex-director:director-browser-oracle.
 metadata:
-  short-description: Run delegated Browser oracle
+  short-description: Obtain an external second opinion
 ---
 
 # Director Browser Oracle
 
-## Quick Start
+Confirm the destination, material the user has authorized for sharing and any required model or tier before submitting. Send only the necessary question and permitted evidence, omitting secrets, private links and identifying details. If authorization, access or the required tier is missing, name the blocker. Report the service's actual response as an external opinion and distinguish it from findings supported by project evidence.
 
-For a Director-managed worker, follow [the worker panel steps](../codex-director/references/project-panel.md#worker). Keep its native chat available after delivery.
+See the [specialist guidance](../codex-director/references/browser-chatgpt-oracle-workflow.md) for this assignment. Honor explicit permissions, evidence and deliverables already agreed in an ongoing brief.
 
-Use only when explicitly invoked by a Director brief or by the user.
-
-This split workflow skill is worker-side. If its activation marker, skill body, callback text, or readback evidence appears in a parent Director thread, the parent treats it only as routing input or child evidence. It does not load this workflow into the parent and does not permit parent inline browser, repo, provider, or project execution.
-
-1. Read local instructions, the Oracle Request Packet, and the owning Director brief.
-2. Load [Browser ChatGPT Pro Oracle Workflow](../codex-director/references/browser-chatgpt-oracle-workflow.md).
-3. Report activation: `workflow-skill-loaded:$codex-director:director-browser-oracle`, selected workflow/playbook `director-browser-oracle`, top-level control loop, user-outcome fit, privacy classification, fallback plan, and evidence contract.
-4. Confirm Browser/Pro suitability before submitting anything externally.
-5. Return the oracle result, confidence, and reconciliation notes without exposing secrets or raw private data.
-
-## Native Helper Mapping
-
-During activation, report `native helper runtime surface`, `V2 helper policy`, and cleanup expectations. `multi_agent_v2` is the worker-internal equivalent of RP `agent_run`/`agent_manage`, not a substitute for Director-created top-level worker threads or Director-mediated oracle routing.
-
-When V2 is available:
-
-- Use the active helper tool schema. Choose a stable lowercase `task_name`. A full-history fork inherits its model and reasoning effort. Pass overrides only when the host supports them and the user or project authorizes them.
-- Treat `wait_agent` as RP wait/poll: it is only a mailbox wake signal. Use `send_message` for queued context, `followup_task` to steer or continue a helper turn, `list_agents` for status/path checks, and `close_agent` for cleanup if available after reading the evidence. When the host provides no close operation, confirm that the helper has finished and record `close_blocked:tool-unavailable`. Never archive a native worker chat to close a helper.
-- Helper briefs must include role/profile, oracle packet path or question, privacy boundary, do/do-not data rules, model/thinking/fork rationale, expected output, evidence standard, and cleanup expectation.
-- V2 helpers may support local fallback review, packet preparation, or reconciliation inside this worker. Map `explore` to source/fallback evidence checks, `engineer` to mechanical prompt artifact preparation, `pair` to reconciliation, and `design` to critique-shape/polish.
-- V2 helpers must not bypass Browser/Pro suitability, privacy approval, model/tier checks, or Director-mediated oracle routing.
-- If used, record helper paths, RP-style profile, model/effort rationale when exposed, owner verification, and `close_agent` or `close_blocked:<reason>`.
-
-## Workflow
-
-1. Activate: restate oracle question, mode, selected workflow, top-level loop, user outcome, privacy class, Browser/Pro requirement, fallback lane, and evidence contract.
-2. Review packet: confirm exact question, why oracle is needed, evidence to provide, requested output, constraints, and alternative lane tolerance.
-3. Privacy gate: redact or omit secrets, credentials, invite links, raw private data, bulky transcripts, and sensitive customer/user data. Stop if approval is needed.
-4. Suitability check: confirm Browser access, signed-in state, and whether a Pro-capable model/tier is available before external submission.
-5. Submit concise context: provide only the evidence needed for the oracle judgment, with source paths or summaries rather than unnecessary transcript dumps.
-6. Capture result: record model/tier if visible, verdict, must-fix/should-fix findings, confidence, caveats, and any questions.
-7. Reconcile lightly: compare oracle result against the packet question and local evidence. Flag conflicts for the Director rather than deciding acceptance yourself.
-8. Finish: return oracle evidence, fallback status, privacy notes, cleanup/archive state, and recommended Director action.
-
-## Fallbacks
-
-If Browser, auth, Pro access, or privacy approval is blocked, return `oracle_blocked:<reason>` plus the best safe fallback: local latest-main/xhigh review, separate Codex review worker, or user approval request.
-
-## Required Invariants
-
-- Use this lane only when explicitly delegated; ordinary workers request oracle help from the Director rather than opening ChatGPT themselves.
-- Redact secrets, credentials, invite links, private raw data, and bulky transcripts before external submission.
-- If Pro access, Browser auth, or privacy approval is missing, report the blocker and fallback lane.
-- Do not implement, patch, or accept the task; this lane returns oracle evidence for Director reconciliation.
-- Treat the oracle output as advice until the Director reconciles it against local evidence.
-- Treat oracle advice as checkpoint evidence, not task completion or final user-outcome proof.
-- Treat V2 helper output as candidate local evidence only after this worker spot-checks it and records helper cleanup.
-
-## Output
-
-Return verdict, must-fix/should-fix findings, quoted source limits observed, submitted context summary, model/tier availability, privacy notes, fallback status, native helper surface, V2 helper evidence/cleanup when used, and cleanup/archive state.
+In a registered project chat, follow the [worker panel steps](../codex-director/references/project-panel.md#worker). Deliver the full result in this chat and keep it open for follow-up. The main discussion can collect the result here. Send a separate cross-chat message only when the user has authorized it.

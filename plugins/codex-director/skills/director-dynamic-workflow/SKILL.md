@@ -1,69 +1,14 @@
 ---
 name: director-dynamic-workflow
-description: Runs the Codex Director dynamic workflow bridge for complex task-level packetization and durable orchestration artifacts. Use when a Director brief explicitly invokes $codex-director:director-dynamic-workflow for approvals, packets, multi-repo or multi-worker work, risky writes, integration tracking, or resumable .workflow state.
+description: Use for resumable coordination across stages, repositories or owners when the user or a Director assignment explicitly requests $codex-director:director-dynamic-workflow.
 metadata:
-  short-description: Packetize complex Director work
+  short-description: Resume or coordinate staged work
 ---
 
 # Director Dynamic Workflow
 
-## Quick Start
+Resume the agreed stage and existing records when an older brief depends on them. Assign each necessary piece an owner and a concrete result, sequence dependent changes and respect approval boundaries. Use durable workflow files or progress monitors when the assignment calls for them. Report completed work, the evidence available and the next dependency or decision.
 
-For a Director-managed worker, follow [the worker panel steps](../codex-director/references/project-panel.md#worker). Keep its native chat available after delivery.
+See the [specialist guidance](../codex-director/references/dynamic-workflow-integration.md) for this assignment. Honor explicit permissions, evidence and deliverables already agreed in an ongoing brief.
 
-Use only when explicitly invoked by a Director brief or by the user.
-
-This split workflow skill is worker-side. If its activation marker, skill body, callback text, or readback evidence appears in a parent Director thread, the parent treats it only as routing input or child evidence. It does not load this workflow into the parent and does not permit parent inline browser, repo, provider, or project execution.
-
-1. Read local instructions and the owning Director brief.
-2. Load [Dynamic Workflow Integration](../codex-director/references/dynamic-workflow-integration.md).
-3. Load `$codex-dynamic-workflows` when available and the task needs its artifact protocol.
-4. Report activation: `workflow-skill-loaded:$codex-director:director-dynamic-workflow`, selected workflow/playbook `director-dynamic-workflow`, top-level control loop, artifact path, user-outcome fit, approvals, helper/subagent lane plan, and evidence contract.
-5. Create or update `.workflow/<slug>/` artifacts only inside the approved project scope.
-
-## Native Helper Mapping
-
-During activation, report `native helper runtime surface`, `V2 helper policy`, planned RP-style helper profiles, and helper cleanup. `multi_agent_v2` is the worker-internal equivalent of RP `agent_run`/`agent_manage`, not a substitute for Director-created top-level worker threads.
-
-When V2 is available:
-
-- Use the active helper tool schema. Choose a stable lowercase `task_name`. A full-history fork inherits its model and reasoning effort. Pass overrides only when the host supports them and the user or project authorizes them.
-- Treat `wait_agent` as RP wait/poll: it is only a mailbox wake signal. Use `send_message` for queued context, `followup_task` to steer or continue a helper turn, `list_agents` for status/path checks, and `close_agent` for cleanup if available after reading the evidence. When the host provides no close operation, confirm that the helper has finished and record `close_blocked:tool-unavailable`. Never archive a native worker chat to close a helper.
-- Helper briefs must include role/profile, workflow artifact paths, packet or artifact scope, do/do-not boundaries, sibling lanes, model/thinking/fork rationale, expected output, evidence standard, and cleanup expectation.
-- Use V2 only under this worker for packet scouting, packet critique, artifact consistency checks, or bounded draft assistance. Map `explore` to packet/source scouting, `design` to critique, `pair` to complex packet-shape synthesis, and `engineer` only to mechanical artifact assistance.
-- V2 helpers are not packet owners, do not create accepted `results/`, and do not replace Director-created packet worker threads.
-- V2 helper evidence counts only after this worker spot-checks it, reflects it in packet/coordination evidence, and records `close_agent` or `close_blocked:<reason>`.
-
-## Workflow
-
-1. Activate: restate complex task, selected workflow, top-level loop, artifact root, final user outcome, approvals, worker/monitor expectations, and evidence contract.
-2. Confirm trigger: identify hard or soft triggers for dynamic workflow: packets, approvals, multi-repo/multi-worker work, high risk, incident-mode surfaces, integration tracking, long-lived monitors, or reusable recipe.
-3. Create state: establish `.workflow/<slug>/plan.md`, `orchestration.md`, `packets/`, `results/`, and `final-report.md` when durable state is warranted.
-4. Plan packets: each packet needs objective, user-outcome contribution, owner, repo/path, workflow skill, files/sources, do/do-not, verification, helper policy, live-config/credential-source policy when relevant, direct-leaf rationale, and readback/acceptance fields.
-5. Sequence: define dependencies, parallel safety, approval gates, monitor cadence, stale/cancel policy, and integration order.
-6. Staff or checkpoint: dispatch authorized packet workers, record active pending worktree/thread handles, or return coordinator-only packet briefs with an explicit dispatch/blocker/approval state.
-7. Reconcile results: promote worker output to `results/` only after child-thread readback, evidence reconciliation, review/oracle status, helper/direct-leaf acceptance, and cleanup/archive state.
-8. Integrate: resolve conflicts, update orchestration state, verify success criteria, and produce `final-report.md`.
-9. Complete audit: confirm no active handle, pending readback, insufficient evidence, unmonitored pending worktree, or coordinator-only recommendation remains unresolved.
-
-## Artifact Minimum
-
-`plan.md` defines success criteria, constraints, approvals, verification, and packets. `orchestration.md` defines sequencing, monitors, state transitions, and integration. Packet files define work ownership. Result files hold accepted evidence only. `final-report.md` captures final status, risks, and next actions.
-
-Incident workflows should separate only the packets needed for the actual task, but the common packet classes are: read-only evidence/log trace, provider or hosted-config repair, browser/E2E proof, app-code patch, deploy/alias rollout, security/privacy review, and durable git/PR follow-up. Do not collapse diagnosis, provider mutation, code patching, direct deployment, and final proof into one monolithic packet without a recorded tiny/mechanical/low-risk exception.
-
-## Required Invariants
-
-- Dynamic workflow owns one complex task, not the whole project portfolio.
-- Packet work is never executed in the parent Director thread. A coordinator-only worker may draft packet briefs, but implementation needs authorized packet workers or explicit tiny direct-leaf authority.
-- Pending worktree ids and queued packet workers are active handles and need callback coverage, a monitor, or `monitor_blocked:<reason>`.
-- Promote worker results only after Director child-thread readback and evidence reconciliation.
-- Promote V2 helper findings only through this worker's packet/coordination evidence, never directly into accepted `results/`.
-- Keep secrets, raw private data, bulky transcripts, and credentials out of workflow artifacts.
-- If monitor or dispatch cannot be created, record the exact blocker instead of presenting the task as monitored or complete.
-- Accepted results must prove the user's final verification surface or record the remaining proof step. Prerequisites such as redirect checks, provider saves, test passes, health checks, or email-proof checkpoints are not completion by themselves.
-- Direct preview deploys, alias moves, or hosted dashboard/API writes must record live state, durable source/PR follow-up, and any temporary local config restore proof before final acceptance.
-
-## Output
-
-Return artifact paths, packet list, approvals, user-outcome fit, worker/monitor handles, readback/evidence state, native helper surface, V2 helper paths/evidence/owner verification/cleanup when used, integration status, direct hotfix/durable follow-up state when relevant, blockers, and next dispatch or acceptance action.
+In a registered project chat, follow the [worker panel steps](../codex-director/references/project-panel.md#worker). Deliver the full result in this chat and keep it open for follow-up. The main discussion can collect the result here. Send a separate cross-chat message only when the user has authorized it.

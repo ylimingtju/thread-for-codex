@@ -1,7 +1,7 @@
 interface:
   display_name: "Director Deep Plan"
-  short_description: "Produce a reviewed Director plan"
-  default_prompt: "Use $codex-director:director-deep-plan to produce a reviewed implementation or architecture plan without editing code."
+  short_description: "Plan an implementation or migration"
+  default_prompt: "Use $codex-director:director-deep-plan to plan this change, explain the trade-offs and identify dependencies."
 
 policy:
   allow_implicit_invocation: false

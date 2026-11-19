@@ -5,7 +5,9 @@
 
 [中文](README.md) · English
 
-**[Download for Windows / macOS (ZIP)](https://github.com/ylimingtju/thread-for-codex/releases/latest/download/thread-for-codex.zip)** · [Installation instructions](#install-and-start)
+**[Download for macOS · v1.1.0 (ZIP)](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-macos.zip)** · **[Download for Windows · v1.0.4 (ZIP)](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)** · [Installation instructions](#install-and-start)
+
+v1.1.0 is available for macOS. Windows users can continue with v1.0.4. The Windows v1.1.0 release will follow once momo-land confirms it on a Windows machine. [v1.1.0 guide, benchmark posters and FAQ](docs/release-v1.1.0.md#en)
 
 ![Three colored threads extend from a single reel](docs/images/threads-cover.jpg)
 
@@ -19,7 +21,7 @@ Thread for Codex adds a project thread panel to Codex for macOS and Windows. For
 
 You need a signed-in Codex desktop app, a Codex CLI that supports `codex plugin`, and Python 3.9 or later. The plugin uses only the Python standard library.
 
-1. Clone the repository or extract the release ZIP. On macOS, choose a folder you plan to keep. Run the command for your system from the source folder.
+1. Download the ZIP for your system above and extract it. If you use Git, check out the release tag for your system (`v1.1.0` for macOS or `v1.0.4` for Windows). On macOS, choose a folder you plan to keep. Run the command for your system from the source folder.
 
    | System | Install command |
    | --- | --- |
@@ -36,9 +38,11 @@ You need a signed-in Codex desktop app, a Codex CLI that supports `codex plugin`
 
 3. Give it a task. For example, “Ask the route planner for two weekend routes and the map thread to check the stops.” On first launch, the plugin pins the main chat and opens the project panel. Use the **项目讨论串** entry in that chat to reopen it later.
 
+Ask “Which route did the planner recommend?” and the main chat summarizes the existing answer. Say “It's going to rain. Please pick a different route,” and it sends the request back to the route planner, then summarizes the new choice. Open that thread for the full answer or to follow up.
+
 A new main chat defaults to `xhigh` reasoning if the model supports it and you have not selected an effort. An existing chat keeps its current setting. You can change the effort at any time and still assign work, follow up, and accept results.
 
-To update, rerun the install command from the updated source folder. If you cloned the repository, run `git pull --ff-only` to update it first. The Windows installer prepares a local marketplace in the Codex data directory and records the Python executable used for installation. If you move or replace Python, rerun the installer with its new path.
+To update, download the release for your system above, extract it, and rerun the install command. If you use Git, run `git fetch --tags` and check out the tag released for your system before installing. The Windows installer prepares a local marketplace in the Codex data directory and records the Python executable used for installation. If you move or replace Python, rerun the installer with its new path.
 
 ## Using the sidebar
 

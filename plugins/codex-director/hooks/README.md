@@ -1,5 +1,5 @@
-# 项目讨论串的状态更新
+# 执行串的返回链接
 
-面板只接受已经显式登记的总线程与执行串关系。生命周期事件使用宿主给出的聊天 ID 定位记录；同目录的普通聊天和临时子代理不属于项目讨论串。
+启用 `UserPromptSubmit` 后，Codex 每轮按当前聊天 ID 查询本机的派工记录。已登记的执行串会收到本轮回复末尾应使用的总讨论链接，同目录的普通聊天不会收到提示。该操作只读，不保存提问内容。
 
-Codex 管理插件钩子的信任状态。用户可在设置的 Hooks 页面或交互终端的 `/hooks` 中查看 `hooks.json` 列出的事件。未授权钩子时，依然可以通过 [面板命令](../skills/codex-director/references/project-panel.md) 登记派工、报告问题和确认完成。面板不会将一次模型回复结束直接计为任务验收。
+在 Codex 的「设置 → Hooks」中可查看并信任此插件的 `UserPromptSubmit`。派工消息也携带返回链接，供尚在登记的新串使用。具体约定见[执行串规则](../skills/codex-director/references/project-panel.md#worker)。

@@ -27,6 +27,25 @@ def create_indexes(directory, threads):
 
 
 class PanelLifecycle(unittest.TestCase):
+    def test_worker_reply_footer(self):
+        director, worker, ordinary = (str(uuid4()) for _ in range(3))
+        script = Path(state.__file__).with_name("worker_reply.py")
+        with tempfile.TemporaryDirectory() as directory, patch.dict(environ, CODEX_HOME=directory):
+            with state.write_registry() as db:
+                db.execute("INSERT INTO directors VALUES(?, 'Project', 'main-key')", (director,))
+                db.execute("""INSERT INTO workers(director, thread_id, view_key, title, status, summary, updated)
+                              VALUES(?, ?, 'worker-key', 'Task', 'completed', 'Done', 1)""", (director, worker))
+            for actor in (worker, director, ordinary):
+                event = {"hook_event_name": "UserPromptSubmit", "session_id": actor, "prompt": "Continue"}
+                output = subprocess.check_output([sys.executable, "-B", str(script)],
+                                                 input=json.dumps(event), encoding="utf-8")
+                if actor == worker:
+                    footer = f"[← 返回总讨论](codex://threads/{director})"
+                    context = json.loads(output)["hookSpecificOutput"]["additionalContext"]
+                    self.assertEqual(context.splitlines()[-1], footer)
+                else:
+                    self.assertEqual(output, "")
+
     def test_utf8_payload_over_stdin(self):
         root = str(uuid4())
         script = Path(state.__file__)

@@ -1,6 +1,6 @@
 interface:
   display_name: "Thread for Codex"
-  short_description: "Coordinate project work across Codex worker threads with quiet, signal-first monitoring"
+  short_description: "Delegate project tasks and summarize worker replies"
   default_prompt: "$codex-director:codex-director 将此线程作为该项目的总讨论。"
 
 policy:
