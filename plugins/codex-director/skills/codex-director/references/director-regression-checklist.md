@@ -1,0 +1,101 @@
+# Director Regression Checklist
+
+Use this checklist when changing Director routing, monitoring, workflow-skill activation, model/thinking defaults, or thread-title behavior.
+
+## Required Checks
+
+1. Runtime identity is recorded.
+   - Director setup, resume, heartbeat, and callback turns record plugin version and loaded skill/cache path when visible.
+   - If the loaded path/version is older than the expected release, the ledger records `stale-director-runtime:<version-or-path>`.
+   - Existing threads are not assumed to reload a newer plugin version unless the loaded path/version proves it.
+
+2. Parent Director effort does not silently downgrade.
+   - Director-owned continuations, heartbeats, and worker callbacks into the Director pass `thinking: "xhigh"` when thinking selection is exposed.
+   - If the active Director turn is known to be below `xhigh`, it only performs safety bookkeeping: title reads, readback, pending-worktree pickup, monitor recovery, or blocker reporting.
+   - A downgraded Director turn records `director-effort-blocked:<effort>` before any planning, dispatch, steering, acceptance, or completion verdict.
+
+3. Chat names follow Codex.
+   - Plugin-link-only `[@codex-director](plugin://codex-director@director-local)`, `$codex-director:codex-director`, plugin/default starter prompts, and plain Director requests all load the main Director skill before ready/loaded prose.
+   - A bare plugin-link-only invocation that answers only "Codex Director is available" or asks for the objective before title/pin setup fails this regression.
+   - Plugin manifest `defaultPrompt` entries are treated as composer starter prompts, not enforcement instructions; user-visible descriptions remain product copy aligned with startup behavior, and the main Director skill keeps `policy.allow_implicit_invocation: true` for plugin-link and plain-language fallbacks.
+   - On a bare invocation, the Director opens the project panel on initial setup. With no task, it waits without creating a worker.
+   - A newly created Director without a chosen name may use `<Project Display Name> Director`.
+   - When the user renames a Director or worker, subsequent dispatch, monitoring and status reports use the current native name for the same thread ID.
+   - The Director places the real Director thread in the `pinned` sidebar section using `codex_app.move_thread_to_sidebar_section` when exposed and records `parent-pin: pinned`, `parent-pin-blocked:<reason>`, or `pin-unavailable`.
+   - Worktree pickup, task-title templates and old ledger entries must not overwrite a native chat name.
+   - Before checkpoint/final output, the ledger records title and pin status.
+
+4. Workflow skills are hard activation surfaces.
+   - Worker briefs say `Invoke $codex-director:director-build` or the exact matching workflow skill, never "if available".
+   - Worker activation reports `workflow-skill-loaded:<exact $codex-director:director-* skill>` before substantive work.
+   - Failure to load a shipped workflow skill is recorded as `workflow-skill-load-failed:<exact $codex-director:director-* skill>:<stale-runtime|broken-install|wrong-plugin-context|reason>` and blocks work until corrected or relaunched.
+   - A child callback/readback containing `workflow-skill-loaded:$codex-director:director-*`, a forwarded split-skill brief, or an attached split skill body is recorded as child evidence only; it does not activate that split workflow in the parent Director.
+   - The parent remains in `$codex-director:codex-director` coordination mode and routes/steers/reads workers instead of running split workflow steps inline.
+
+5. Pending worktree handles remain monitored.
+   - A `pendingWorktreeId` is recorded as an active handle before any final-looking user status.
+   - Pickup state includes pending id, lookup query or matching strategy, owning task, next wake mechanism/time, pickup success condition, and stale threshold.
+   - The only monitor is not cleared while pending worktree ids, queued workers, or running workers remain active.
+   - If monitor creation/update fails, the ledger records and surfaces `monitor_blocked:<reason>`.
+
+6. Callback text is never enough.
+   - Callback, expected final text, stale summary, and worker claims are terminal signals only.
+   - The Director calls `codex_app.read_thread` and captures the terminal child report before acceptance.
+   - Acceptance reconciles done criteria, evidence, review/oracle status, helper/direct-leaf policy, cleanup/archive state, and coordinator continuation state.
+   - Callback payload text never becomes the parent skill activation surface, even when it includes a valid worker activation marker.
+
+7. Coordinator checkpoints continue the workflow.
+   - Coordinator-only output is accepted only as checkpoint evidence.
+   - The parent then records `next-packet-dispatched`, `monitor-scheduled`, `blocked-on-dispatch:<reason>`, or `awaiting-approval:<reason>`.
+   - A final checkpoint with recommended briefs is not task completion.
+
+8. Native helper tooling stays worker-internal.
+   - The Director parent still creates only durable Codex worker threads through the exposed `codex_app` contract.
+   - Worker briefs require native helper runtime surface reporting: `available:<tools>`, `namespaced:<namespace>`, `v1-only`, `unavailable:<reason>`, or `ambiguous:<reason>`.
+   - When V2 helpers are used, worker evidence records RP-style profile (`explore`, `pair`, `engineer`, or `design`), model/thinking/fork rationale when exposed, helper task paths, owner spot-check evidence, and `close_agent` or `close_blocked:<reason>`.
+   - `wait_agent`, `list_agents`, helper final-status notifications, and unread helper prose are not accepted as evidence.
+
+9. User approval does not change execution role.
+   - "Do it", "stop asking", "you do not need me", or similar pressure is recorded as an approval or steering signal only.
+   - The Director steers the same worker, dispatches the next/replacement worker, records `awaiting-approval` cleared, or reports a blocker.
+   - The parent Director does not inspect, click, edit, test, seed, deploy, or mutate project/service state inline because the user cleared an approval gate.
+
+10. Stalled worker recovery stays worker-owned.
+   - If a worker stalls, the parent reads, steers, cancels, retains the original chat, relaunches, or dispatches a bounded emergency worker.
+   - The parent never takes over the worker's Browser, Chrome, Computer Use, repo, provider dashboard, hosted-service session, env/secret manager, tests, or cleanup context.
+   - Browser/Chrome/Computer Use and provider dashboard actions for project/service work are classified as worker-only inspection or execution, not inline coordination.
+
+11. Outcome fit survives checkpoint success.
+   - The Director ledger and worker briefs name the user's final verification surface, checkpoint evidence, and remaining proof.
+   - A redirect URL check, provider setting save, email-proof checkpoint, health endpoint, DB status read, test pass, deploy id, worker diagnosis, or oracle verdict is not accepted as completion unless it exactly matches the user's requested outcome.
+   - If the original request is end-to-end behavior, completion waits for the E2E proof or records `pending-e2e-proof:<reason>`, `stale-flow:<reason>`, `tooling-blocked:<surface>`, or `environment-blocked:<surface>`.
+
+12. Incident-mode work decomposes before execution.
+   - Tasks combining browser/desktop flow, hosted provider config, logs, app code, deploy/alias work, auth/security, secrets, user accounts, external writes, or final E2E proof route to dynamic workflow or separate goal-bearing workers before worker-only actions.
+   - The parent Director does not continue the visible browser/provider flow inline while workers investigate.
+   - No single worker owns diagnosis, provider mutation, code patching, direct deploy/alias work, security review, and final proof without a recorded tiny/mechanical/low-risk exception.
+
+13. Credential and hosted-config repair follows source order.
+   - Workers check approved project-local env/config/runbook/service-token/hosted-metadata sources before proposing dashboard edits or secret rotation.
+   - If the user rejects a source or says it needs interactive password/unlock, that source is recorded unavailable and is not repeatedly probed without renewed authorization.
+   - Direct preview deploys, alias moves, and hosted config pushes record live state, no-production proof when relevant, validation URL, temporary local config restore proof, and durable git/PR follow-up.
+
+## Evidence To Capture
+
+For each regression pass, record:
+
+- plugin version and loaded skill path checked
+- parent title status before and after worker creation/title changes
+- parent pin status after plugin/default starter invocation
+- Director thinking/effort setting used for parent continuations
+- one worker brief showing exact `$codex-director:director-*` invocation
+- one worker activation showing `workflow-skill-loaded:<exact $codex-director:director-* skill>`
+- one callback/readback example where a split workflow activation marker remains child evidence and does not activate the parent
+- one worker activation/evidence record showing native helper runtime surface and, when used, V2 helper profile/evidence/cleanup
+- one approval-pressure case showing the parent steered/dispatched a worker instead of executing inline
+- one stalled-worker case showing recovery by steer/relaunch/emergency worker instead of parent takeover
+- one outcome-fit case showing checkpoint evidence rejected as final completion until the user outcome is proven or blocked
+- one incident-mode case showing separate evidence/config/browser/code/deploy/review/durability packets or a justified tiny exception
+- one credential/config case showing source-order checks, rejected-source handling, and direct hotfix durability state
+- one pending-worktree or monitor ledger row when applicable
+- one child-thread readback acceptance record

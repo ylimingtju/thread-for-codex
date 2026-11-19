@@ -1,0 +1,552 @@
+# Latest Codex Runtime Tooling
+
+Use this reference whenever a Director workflow says to create a Codex worker thread, choose a project target, title/pin/archive/read/steer a thread, build context, invoke an oracle, manage a worktree, commit, or use a Codex Goal. Latest Codex native thread and project tooling is the contract for Director worker lifecycle. Required Codex definitions and native schemas are assumed present by definition; this skill is not a portable workflow engine with interchangeable worker engines.
+
+## Core Rule
+
+Name the role and outcome first, then use the concrete latest-Codex thread/project operation that owns it:
+
+```text
+Need: independent worker for Packet 02
+Role: implementation worker using build workflow
+Codex tool: `codex_app.create_thread` with resolved project target
+Evidence: activation report in ledger, changed files, tests, review verdict
+```
+
+Codex worker thread lifecycle belongs to the active `codex_app` thread and project tool contracts. Sub-agent APIs are worker-internal execution helpers, not substitutes for Director-managed Codex worker threads. Context engines are context builders, reviewers, or oracle helpers, not worker-thread lifecycle tools.
+
+RepoPrompt `agent_run` and RepoPrompt agents are context/review/oracle lower-layer helpers only. Do not use them as the Director worker-thread dispatch mechanism. Director setup confirms the required latest-Codex `codex_app` thread/project tools and schema before operating, and the skill assumes those native definitions are present. Do not swap in RepoPrompt agents for Codex worker threads.
+
+The Director thread is coordination-only. It may triage, brief, check in, steer, reconcile evidence, update ledgers or workflow artifacts, and answer coordination/status questions from its existing ledger or conversation state. It must not implement, investigate, edit, test, or otherwise execute project work in its own thread. Direct inline corrective repo, browser, desktop, provider, or hosted-service execution after a worker stalls is prohibited; for emergencies, the Director records explicit authority and dispatches a bounded emergency worker or dynamic workflow, but the Director still must not inspect or execute repo/prod/browser/provider work inline or take over a worker's browser, desktop, repo, or hosted-service session. If a status/checkup/lookup answer would require repo/docs/code inspection, provider-dashboard inspection, Browser/Chrome/Computer Use state checks, env/token probing, or service checks, the Director must spawn or continue a Codex worker thread instead of doing the work inline. Latest-Codex thread/project tooling is the assumed execution surface for that worker-thread path.
+
+Completion is tied to the user's outcome, not the nearest successful checkpoint. The Director ledger and every worker brief must distinguish `final_verification_surface`, `checkpoint_evidence`, and `remaining_proof`. A redirect probe, provider setting save, DB status read, hosted health check, worker diagnosis, or browser handoff can be accepted only as checkpoint evidence unless it directly satisfies the user's stated finish line.
+
+Incident-mode tasks are decomposition-first. If a task mixes browser/desktop control, hosted provider config, logs, app code, deploy/alias work, auth/security, secrets, user accounts, or external writes, the Director must dispatch dynamic workflow packets or separate goal-bearing workers before worker-only tools are used. The parent does not keep the live browser session as an inline operator while workers investigate, and a single worker should not own diagnosis, provider mutation, code patching, direct deployment, E2E proof, security review, and PR durability unless the brief explicitly proves a tiny/mechanical/low-risk exception.
+
+The Director is a rapid-fire intake surface, not a single-task executor. For multiple user asks, dispatch or continue separate bounded worker threads or workflow packets, record handles and expected evidence in the ledger, and stop after the dispatch/checkpoint instead of waiting inline unless the user explicitly asks for live narration.
+
+## Tooling Boundaries
+
+Use these layers:
+
+1. `codex_app` thread/project tools are required for Director-owned worker lifecycle: create, target, title, pin, read, steer, archive, and callback signaling when authorized.
+2. Native sub-agent tools are worker-internal helpers for decomposition, verification, or bounded helper tasks when the owning worker chooses them.
+3. Context, oracle, and Browser tools provide evidence, review, and durable artifacts; they do not own Codex worker lifecycle.
+4. Local shell/git/file tools are only for Director-owned coordination chores such as reading ledger files, inspecting worker evidence, checking git status before dispatch, or recording reconciliation state. Do not use them to perform project work in the Director thread or to satisfy repo/doc/code/provider-backed status, checkup, lookup, env, test, or mutation requests.
+5. Director setup/activation confirms the required latest-Codex worker/thread/project tooling before any Director operation. The skill assumes these native definitions are present and treats them as the Director worker lifecycle contract.
+
+## Setup Contract Confirmation
+
+At Director setup and before the first worker dispatch in a session, confirm the active latest-Codex `codex_app` thread/project tools and schema. Record the confirmed contract in the ledger:
+
+```text
+Codex thread/project tooling: verified
+Capability source: active tool metadata
+Searched terms: thread, session, conversation, chat, tab, fork, pin, title, archive, create, switch, list, close, send, wait, poll, project, target, worktree
+Required ops verified:
+Schema notes:
+Excluded hits:
+```
+
+Latest Codex is the premise of the skill; keep this setup record focused on the active Codex-native thread/project contract.
+
+Exclude these hits from `codex_app` thread detection:
+
+- Gmail or Outlook email threads
+- GitHub review/comment threads
+- Notion or app discussion threads
+- RepoPrompt agent sessions, compose tabs, workspace tabs, or context chats
+- `multi_agent_v1` sub-agents
+- Browser or Chrome tabs
+
+## Thread And Project Tooling
+
+The active `codex_app` tool schema is the contract. Do not document or call thread lifecycle operations that are not present in that schema. When the main Director skill is loaded from `@codex-director`, `$codex-director:codex-director`, a plugin/default starter prompt, the Director skill entry, or a plain request to set up or use a Director, make the current thread the Director; create a separate Director thread only when the user clearly asks for a separate or new one. On activation, set up the current Director: use its current name, set a default only for a newly created chat without a chosen title, call `codex_app.move_thread_to_sidebar_section` with the actual Director `threadId` and `sectionId: "pinned"` if the current chat is not already pinned, record title/pin/runtime status, initialize or reuse its panel and open it on the right on initial setup. If the user already supplied a task, proceed with it. Otherwise wait without opening a worker. Do not answer only that the Director is available, loaded, or in scope. The Director may switch to a different active Director only when the user clearly asks to continue or reuse it, and must not resurrect or unarchive an archived prior Director by default. Use native IDs for routing and the current Codex names for display. Keep the Director pinned when the tool is available. For worker creation or a follow-up to a worker, use the user’s explicit authorization for the project and destination under the active thread tool contract.
+
+### Runtime Version And Reload
+
+At Director setup and at the start of every resume, heartbeat, or callback turn, record the loaded Director runtime identity when visible: plugin version, `SKILL.md` path, and source/cache path. Existing threads may retain skill content or cache paths from the version they loaded earlier; do not assume that installing or publishing a newer plugin version reloads an already-running Director thread. The Director proves the active contract from the loaded path/version it can see, not from source repository state or marketplace metadata alone.
+
+If the loaded path or manifest shows an older Director than the expected release, record `stale-director-runtime:<version-or-path>` and do not rely on newer split-skill or monitor guarantees in that thread. Correct by starting a fresh Director after the plugin is updated, or by explicitly re-invoking/reloading the skill only when the runtime exposes a way to prove the loaded path changed. If the path cannot be observed, record `director-runtime-unverified` and keep dispatch/acceptance conservative.
+
+Director naming and pinning
+
+1. Use the current native name for the Director and its workers. A new, unnamed Director may be given `<Project Display Name> Director`. Only an explicit rename request changes an existing name.
+2. Look up the Director ID in `codex_app.list_threads` and preserve its position if pinned. Otherwise call `codex_app.move_thread_to_sidebar_section` with its actual ID and `sectionId: "pinned"`. Record `parent-pin: pinned` or `parent-pin-blocked:<reason>`.
+
+Current `codex_app` thread contract:
+
+| Operation | Tool | Contract |
+|---|---|---|
+| Create worker thread | `codex_app.create_thread` | `prompt`, resolved `target`, optional `model`, optional `thinking`; use only when the active tool instructions authorize creating a new or separate thread |
+| Continue / steer worker | `codex_app.send_message_to_thread` | `threadId`, `prompt`, optional `model`, optional `thinking` |
+| Continue / wake Director | `codex_app.send_message_to_thread` | `threadId` is the Director thread id; pass `thinking: "xhigh"` when thinking selection is exposed, including heartbeat wakeups and user-requested Director continuations |
+| Worker callback to Director | `codex_app.send_message_to_thread` from the worker runtime, only if exposed there and authorized directly by the user for that target thread | `threadId` is the Director thread id; signal only `final`, `blocked`, `needs_user`, `oracle_request`, or ownership-changing `handoff`; pass `thinking: "xhigh"` when exposed so callbacks do not downshift the Director |
+| List threads | `codex_app.list_threads` | optional `limit`; default view includes `pinnedThreads`. History mode supports cursors. |
+| Read / poll worker | `codex_app.read_thread` | `threadId`, optional `cursor`, optional `turnLimit`, optional `includeOutputs`, optional `maxOutputCharsPerItem` |
+| Set title | `codex_app.set_thread_title` | `threadId`, `title` |
+| Pin Director | `codex_app.move_thread_to_sidebar_section` | `threadId`, `sectionId: "pinned"`; optional returned `hostId` |
+| User-requested archive / restore | `codex_app.set_thread_archived` | `threadId`, `archived` |
+
+For this local panel, use a local project, local worktree, or local projectless target:
+
+```text
+project target:
+  type: "project"
+  projectId: <saved project id / workspace root>
+  environment:
+    type: "local"
+    OR
+    type: "worktree"
+    startingState: optional { type: "working-tree" } or { type: "branch", branchName: <branch> }
+
+projectless target:
+  type: "projectless"
+  directoryName: optional output directory name
+```
+
+### Project Target Resolution
+
+Before launching a worker, resolve the `create_thread.target` from the worker's owning repo/path, not from the Director thread's current project by default.
+
+Resolution order:
+
+1. If the launch contract includes an explicit `projectId`, use that saved Codex project target.
+2. If `projectId` is absent and the repo/path/worktree path is known, find saved Codex projects that own that path. Prefer an exact workspace-root match, then the most specific saved project whose workspace root is closest to the owned path.
+3. For nested or overlapping saved project roots, do not treat overlap as ambiguity by itself. The closest owning workspace root wins.
+4. For multi-repo workspaces, bind each worker to the child repo/path it owns. Do not send every worker to the Director thread's project just because the Director was opened there.
+5. If no saved project owns the path, use a `projectless` target with recorded rationale. Projectless is also valid when the task is genuinely projectless.
+6. If equally specific matches remain, path ownership is unclear, or the selected project would not actually cover the worker's owned repo/path, stop before launch and report a runtime blocker or ask the user for the project target. Do not guess.
+
+Record the resolved `projectId` or `projectless` target, resolution basis, repo/path, worktree path, and projectless rationale when applicable in the worker brief and Director ledger. On resume, steering, or replacement launch, reuse that recorded target unless the user changes ownership.
+
+Lifecycle mapping:
+
+| Need | `codex_app` behavior |
+|---|---|
+| Create new thread | `codex_app.create_thread` with a valid `target`; only when the active tool contract permits new thread creation |
+| Select project/worktree | For project targets, choose `target.environment.type = "local"` or `"worktree"`; worktree can start from the current working tree or a named branch when supported by schema |
+| Send initial brief | Put the full self-contained launch contract in `create_thread.prompt` |
+| Fork existing conversation context | Not exposed; pass an artifact path or self-contained context in the prompt |
+| List active threads | `codex_app.list_threads` with a limit. Match by known thread ID. |
+| Open registered chat in the UI | The user selects its title in the project panel. The panel opens its native Codex chat link. |
+| Send follow-up | `codex_app.send_message_to_thread` |
+| Wait | `codex_app.wait_threads` with the recorded host and thread IDs, and `afterCursor` when available |
+| Poll | `codex_app.read_thread`; record cursor/last turn seen |
+| Cancel/stop | No hard-cancel tool is exposed in the current `codex_app` schema; send a stop request with `codex_app.send_message_to_thread`, record `cancel_requested`, poll for acknowledgment or staleness, then record the result and retain the chat |
+| User explicitly requests archive | `codex_app.set_thread_archived` with the registered worker ID and `archived: true` |
+| Set title/pin | `codex_app.set_thread_title`, `codex_app.move_thread_to_sidebar_section` |
+
+### Launch Contract
+
+Before a Director records, reports, steers, or calls `codex_app.create_thread` for a worker/packet/review/oracle lane, the proposed structure must be complete enough to force a workflow choice. Each proposed worker or packet needs an explicit `$codex-director:director-*` workflow skill, selected workflow/playbook, top-level control loop, helper/subagent or direct-leaf policy, oracle/review gate, dependencies or blockers, and acceptance evidence/readback/cleanup requirements. A role list without these fields is still routing, not a launch plan, status item, or accepted worker entry.
+
+Workflow skill activation is not optional. The `$codex-director:director-*` workflow skills ship with the Director plugin, so worker briefs must say `Invoke $codex-director:director-build` or the exact matching skill, never "use if available". Worker activation must include `workflow-skill-loaded:<exact $codex-director:director-* skill>` before substantive work. If a worker cannot load the exact shipped workflow skill, treat it as `workflow-skill-load-failed:<exact $codex-director:director-* skill>:<stale-runtime|broken-install|wrong-plugin-context|reason>`, stop substantive work, and let the Director correct, relaunch, or record the runtime fault.
+
+Split workflow activation is child-owned. In the parent Director thread, callback/readback payloads, forwarded briefs, attached skill bodies, or transcript snippets containing `workflow-skill-loaded:$codex-director:director-*` are worker evidence only. They do not load that split workflow into the parent, do not authorize parent inline execution, and do not change the parent out of `$codex-director:codex-director` coordination mode.
+
+Before calling `codex_app.create_thread`, define:
+
+- initial title for a new worker or the current native name for a reused worker
+- starting prompt
+- explicit authorization basis for creating a new/separate thread under the active tool instructions; for a Director thread itself, this requires a clear separate/new-thread request
+- resolved target project/worktree or projectless directory, including the project id/target and resolution basis
+- model and thinking level plus rationale
+- explicit `$codex-director:director-*` workflow skill, selected workflow/playbook, and top-level worker control loop
+- required skills or workflow references
+- context artifacts or source files to read first
+- mandatory helper/subagent lanes for non-trivial Director-created work, or direct-leaf exception with separate tiny, mechanical, and low-risk rationale
+- coordinator authority: coordinator-only, packet-executor for a named packet, or tiny direct-leaf with rationale
+- checkpoint continuation policy for coordinator-only workers: next packet dispatch, existing monitor, blocker, or approval wait state
+- git/worktree handling and commit authority derived from the user's request
+- done criteria
+- user outcome fit: final verification surface, checkpoint evidence this worker may prove, and remaining proof before Director completion
+- live config/credential-source policy when relevant: source order, provider/dashboard/write authority, direct deploy/alias authority, and restoration/durable follow-up proof
+- evidence format and verbosity limit
+- Director callback policy and Director thread id, if worker-to-Director callbacks are available and useful
+
+Use `create_thread.prompt` for the full launch prompt. Use `create_thread.model` with an exact model id allowed by the active schema when the selected worker profile calls for an override. A separate Director thread defaults to latest-main/`xhigh` when the active schema supports those choices. Existing Director thread continuations, heartbeat wakeups, and worker callbacks into the Director also use `xhigh` when thinking selection is exposed; do not inherit or pass low/medium/high worker thinking into the Director thread. If the current Director turn is known to be below `xhigh`, it may repair title state, read workers, recover monitors, pick up pending worktrees, and report blockers only; it must not make routing, dispatch, acceptance, completion, or substantive steering decisions from that downgraded turn. Director-created workers default to the latest non-Spark main model, for example `gpt-5.5` when it is exposed, with thinking selected by worker task shape and risk; never choose older main-family model ids just because the schema exposes them. The only older-numbered model exception is `gpt-5.3-codex-spark`, because Spark's latest available line is 5.3, and only when Spark is the right fit for a narrow scout, status/probe, scratch prompt artifact preparation, bounded research, Browser automation runner, or mechanical low-risk helper lane. If the Director writes a `Model:` field into the brief or passes `create_thread.model`, it must use the exact latest main id unless the lane is explicitly Spark-fit. Use `create_thread.thinking` only with active-schema values: `low`, `medium`, `high`, or `xhigh`. Worker thinking defaults remain task-based: low/medium for routine probes or mechanical work, high for ordinary work-item coordination and implementation, and xhigh for high-risk or final-authority worker gates. Otherwise mark the brief as inheriting default runtime settings only when the runtime default is known to resolve to the latest main model. Supply the initial worker name on creation. Use the name returned for its native ID on later turns. Keep the Director pinned, and pin worker threads only for an explicit user request or a durable lane that must remain visible.
+
+Every real worker must start with an activation report. Record routine activation in the Director ledger; surface it to the user only when activation changes routing, exposes a blocker, or requires a decision. If the worker does not return activation, steer it once:
+
+```text
+Before continuing, return the activation report required by the Director brief:
+instructions read, task shape, selected workflow, research lane, helper/subagent lanes or direct-leaf tiny/mechanical/low-risk rationale, oracle lane, review gate, evidence, git/worktree handling, Goal fit, done criteria.
+```
+
+If the worker reports only a generic workflow and not the explicit `$codex-director:director-*` skill from the brief, steer it to load the missing skill before accepting activation.
+
+If the worker still skips activation, broadens scope, becomes stale, or is superseded, send a stop/no-further-changes instruction, record the reason and any usable evidence, keep the original chat available, and re-brief only if the task is still needed. Do not reuse that worker for a different material task; create a fresh worker handle for the new assignment.
+
+### Required Thread Handle Fields
+
+Every running or queued worker needs a ledger handle:
+
+```text
+worker_id:
+thread_id:
+pending_worktree_id:
+thread_title:
+director_created_worker: yes | no
+director_thread_id:
+owning_director_task_id:
+codex_thread_project_tooling: verified
+director_runtime_version:
+director_runtime_path:
+director_runtime_status: verified | director-runtime-unverified | stale-director-runtime:<version-or-path>
+status: queued | running | needs_input | blocked | cancel_requested | stale | pending-readback | readback_blocked:<reason> | insufficient-evidence | accepted | archived
+project_id:
+target: local | worktree | projectless
+project_resolution_basis: explicit-projectId | exact-root-match | closest-owning-root-match | projectless-no-saved-project | projectless-task | blocked-equally-specific | blocked-unclear-ownership | blocked-selected-project-mismatch
+repo_path:
+worktree_path:
+branch:
+base_ref:
+model: latest main id, inherited latest-main default, or `gpt-5.3-codex-spark` for a Spark-fit lane only
+thinking:
+thinking_rationale:
+starting_prompt_or_artifact:
+skills_required:
+workflow_skill_activation: workflow-skill-loaded:<exact $codex-director:director-* skill> | workflow-skill-load-failed:<exact $codex-director:director-* skill>:<reason> | pending
+selected_workflow_playbook:
+top_level_control_loop:
+coordinator_authority: coordinator-only | packet-executor:<packet-id> | tiny-direct-leaf:<rationale>
+checkpoint_continuation: none | next-packet-dispatched | monitor-scheduled | blocked-on-dispatch:<reason> | awaiting-approval:<reason>
+commit_authority:
+done_criteria:
+evidence_required:
+user_outcome:
+final_verification_surface:
+checkpoint_evidence:
+remaining_proof_before_completion:
+created_at:
+last_poll_at:
+next_wake_at:
+pending_worktree_lookup_query:
+pending_worktree_pickup_success:
+monitor_interval:
+monitor_mechanism: heartbeat | cron | manual | none
+monitor_status: active | pending-create | monitor_blocked:<reason> | replaced | cleared | none
+monitor_id:
+parent_title_status: current Codex name | unavailable
+parent_pin_status: pinned | parent-pin-blocked:<reason> | pin-unavailable
+stale_after:
+callback_policy: none | director-thread-signal
+director_callback_thread_id:
+last_callback_at:
+last_callback_signal:
+terminal_signal: none | callback:final | callback:blocked | callback:needs_user | callback:oracle_request | callback:handoff | poll:final
+last_turn_seen:
+read_cursor:
+readback_status: not-started | pending-readback | readback_complete | readback_blocked:<reason>
+terminal_thread_read_at:
+final_report_captured: yes | no
+evidence_reconciled: yes | no
+helper_policy_accepted: yes | no | direct-leaf:<tiny/mechanical/low-risk rationale> | blocked:<reason>
+acceptance_status: running | pending-readback | insufficient-evidence | accepted | blocked | stale | archived
+next_action:
+blockers:
+live_config_credential_policy:
+chat_retention: retained unless the user requests archive
+cleanup_required:
+pinned: director-only | explicit-user-request | durable-lane | not-pinned
+```
+
+For non-dynamic work, this ledger can live in the Director thread notes or a repo-local status artifact. Escalate to `.workflow/<slug>/` when the task needs persistent packet tracking, multiple worker handles, worktrees, approval checkpoints, integration tracking, or durable evidence files.
+
+### Resumable Monitoring, Input, And Staleness
+
+On Codex Desktop, use `codex_app.wait_threads` for ongoing work when the user asks the Director to follow it through. Supply the returned host/thread IDs and cursors, then read the result in its owning chat. A transient pending ID belongs only to dispatch tracking until Codex confirms the local thread ID. Use the host’s active monitoring policy; do not create an automation for individual job completion. The project panel refreshes independently of the model.
+
+Read a newly created worker once after creation to confirm activation when practical. If worker creation returns a pending worktree id rather than a thread id, record that pending id as an active handle and schedule a pickup monitor to find the eventual thread by ID, read its activation and current name, and continue normal monitoring. Do not keep the Director turn running only to wait for spawned workers. After dispatch, record worker handles, cursor or last turn seen, `last_poll_at`, `callback_policy`, `next_wake_at`, `monitor_interval`, and `stale_after`; then stop the Director turn or schedule the lightest available wake mechanism.
+
+Prefer signal-first monitoring when the worker runtime exposes `codex_app.send_message_to_thread` and the user has authorized that worker to message the Director. The worker may send a single callback to the Director thread for `final`, `blocked`, `needs_user`, `oracle_request`, or ownership-changing `handoff`; it must not send routine progress, poll, rerun, or "no blocker" callbacks. When thinking selection is exposed on the callback send, the callback must use `thinking: "xhigh"` because it wakes the Director thread. The Director treats the callback as a wake signal only, marks `terminal_signal`, sets `readback_status: pending-readback`, then reads the worker thread before accepting evidence.
+
+User approval changes approval state only. "Do it", "stop asking", "you do not need me", and similar instructions should update the worker's authority, dispatch the next worker, or clear an approval gate in the ledger. They must not be treated as permission for the parent Director to use Browser, Chrome, Computer Use, repo tools, provider dashboards, service APIs, env/secret managers, or tests inline.
+
+Concrete callback-to-readback sequence:
+
+1. Receive callback, poll result, heartbeat wake, resume notice, expected-final, or stale summary.
+2. Update `terminal_signal` and callback metadata without accepting completion.
+3. Call `codex_app.read_thread` with the recorded `threadId` and optional `hostId` to read the latest turn. Its `cursor` pages backward for older context. Use the `afterCursor` returned for `wait_threads` only on the next wait.
+4. If `read_thread` succeeds and contains a terminal child report, record `readback_complete`, `terminal_thread_read_at`, updated `read_cursor`/`last_turn_seen`, and `final_report_captured: yes`.
+5. Reconcile the child report against done criteria, required evidence, review/oracle gates, and helper/direct-leaf policy.
+6. Record `acceptance_status: accepted | insufficient-evidence | blocked | stale` and record archive/cleanup state separately.
+
+For duplicate or out-of-order callbacks, compare the latest child turn with the last turn reviewed. Do not downgrade already accepted evidence unless `read_thread` reveals a newer terminal child update that changes the final report or blocker. If `read_thread` fails, is unavailable, or returns no terminal child report, record `readback_blocked:<reason>`, `pending-readback`, or `insufficient-evidence`; never record `accepted` from the callback payload alone.
+
+Use a short quiet polling burst only when the worker is likely to finish within about a minute or an immediate dependent decision is expected. Otherwise prefer callback signaling plus a watchdog heartbeat. If callback signaling is not active for the worker, prefer a thread heartbeat attached to the Director thread for near-term follow-up when appropriate; heartbeat prompts that wake the Director thread must use `xhigh` reasoning when that setting is exposed. Use a detached cron/workspace automation only for genuinely detached monitoring. If no wake mechanism is exposed, record `monitor_mechanism: manual`, `next_wake_at`, and the next action rather than leaving the Director spinning. If the selected monitor create/update call fails, record `monitor_status: monitor_blocked:<reason>`, keep any existing monitor active unless it is demonstrably superseded, and surface the blocker instead of claiming the task is monitored.
+
+Default cadence should keep overall work fast:
+
+- Callback available: rely on the callback for terminal/blocking signals; set a watchdog heartbeat for 2-3 minutes only to catch lost callbacks or silent stalls.
+- No callback, user actively waiting, or unknown short work: first watchdog in 30-60 seconds.
+- Build/test/review without callback: 1-2 minutes while likely active, then 2-4 minutes after confirmed long-running execution.
+- Worker-reported long operation: 3-5 minutes, then shorten to 30-90 seconds near verification or expected completion.
+- Never choose a wake longer than 3 minutes while the user is actively waiting unless callback signaling is available or the worker explicitly gave a longer ETA.
+- Poll immediately after user steering, suspected blockage, a dependent worker finishing, or a worker-reported handoff.
+
+Polling cadence is not user-update cadence. Poll privately and update the ledger quietly. Do not emit user-facing messages for routine polls, waits, activation confirmations, reruns, local diagnosis, or "no blocker" checks. Surface only final evidence, real blockers or user decisions, safety/production/destructive choices, ownership-changing handoffs, and stale/cancel/archive/cleanup state. Do not return a user-visible final verdict until child-thread readback has captured terminal worker evidence and the Director has reconciled done criteria, evidence, review/oracle status, and helper/direct-leaf acceptance; if evidence is missing, report `pending-readback`, `readback_blocked:<reason>`, `stale`, or `insufficient-evidence`. A coordinator checkpoint that only recommends next worker briefs must be followed by `next-packet-dispatched`, `monitor-scheduled`, `blocked-on-dispatch:<reason>`, or `awaiting-approval:<reason>` before the Director can claim the workflow is progressing. Pending worktree ids, queued workers without thread ids, and running workers are active handles; do not clear the only monitor for the task until every active handle has terminal evidence, a replacement monitor, or a recorded blocker. Completion is not fully reconciled until worker cleanup state is recorded. Collapse repeated failures and reruns into one message only when the diagnosis changes materially or user action is needed.
+
+Heartbeat hygiene:
+
+- Keep at most one active heartbeat monitor per Director task unless the user explicitly asks for independent monitors.
+- Prefer updating an existing monitor over creating a duplicate.
+- Heartbeat prompt should be self-contained: read the Director ledger, poll recorded workers with `read_thread`, surface only visible-gate output, reschedule if active work remains, and pause/delete itself when no active worker handles remain.
+- If callback signaling is active, heartbeat is a watchdog only; do not use it as the primary progress mechanism.
+- Do not use heartbeat wakeups as a substitute for worker ownership; workers still own implementation, verification, and final evidence.
+- Keep temporary cleanup, verification, oracle, and review chats available after acceptance. Keep a user’s pin or archive choice.
+
+When a worker needs input:
+
+1. Answer from the brief, ledger, project instructions, or existing user authority when the answer is within scope and does not require repo/doc/code inspection.
+1. If the answer would require repo/doc/code inspection for a status, checkup, lookup, research, investigation, verification, or implementation request, spawn or continue a Codex worker thread instead of reading repo/docs/code directly in the Director thread.
+2. When steering a worker thread, choose the steering prompt's thinking level from the worker policy: `low` for routine worker reminders/status, `medium` for continuing a reviewed plan, `high` for substantive judgment or implementation steering, and `xhigh` for risky or final worker decisions. When the target is the Director thread instead, use `xhigh`.
+3. Ask the user when the answer changes outcome, expands scope, exposes sensitive data, requires production/destructive action, or changes commit authority.
+4. Record the decision in the ledger or the relevant workflow artifact.
+
+A worker is stale when it misses the expected check-in window, stops making observable progress, or no longer matches the active brief. Steer once with the original boundary or stop request. If it remains stale, mark `stale`, record its last readable state, retain the thread, and dispatch a replacement worker with a clean brief.
+
+### Cancel And Cleanup Semantics
+
+Cancellation is a state transition in the Director ledger:
+
+```text
+running -> cancel_requested -> blocked | stale (retained)
+```
+
+The current `codex_app` thread contract uses cooperative cancellation: send a stop instruction with `codex_app.send_message_to_thread`, then poll with `codex_app.read_thread`. Record its last known status, cancellation acknowledgment or blocker, partial artifacts, branch/worktree, and cleanup needs. Retain the chat. For a separate user request to archive, record success only after the native operation succeeds.
+
+Partial worktree cleanup is project work. The Director records the cleanup requirement and dispatches a cleanup/reconciliation worker. The Director does not resolve files, remove branches, or rewrite working trees inline.
+
+Stalled worker recovery is still worker-owned. The Director may read the worker, send one or more bounded steers, cancel after recording state, relaunch a replacement, or dispatch a narrow emergency worker. It must not take over the stalled worker's browser, desktop, repo, provider dashboard, service console, or local execution context from the parent thread.
+
+When a worker reports browser, desktop, dashboard, or consent automation trouble, classify the state precisely:
+
+- `tooling-blocked:<surface>` when automation cannot attach, click, type, screenshot, or inspect.
+- `environment-blocked:<surface>` when the desktop is locked, app is unavailable, auth/login requires user action, or OS/browser policy prevents control.
+- `stale-flow:<reason>` when OAuth state, invite/session state, callback state, or a one-time link may have expired because of elapsed time or reused tabs.
+
+The owning worker should preserve the latest safe state, avoid printing tokens or invite links, supersede any exposed one-time token when possible, and restart from a fresh flow rather than repeatedly interacting with stale OAuth/consent pages. The Director can accept this only as checkpoint/blocker evidence, with the next fresh-flow restart point and any non-browser alternatives recorded.
+
+### Hosted Config, Credentials, And Direct Deploys
+
+Provider credentials and hosted auth config are worker-owned execution surfaces. Workers must try approved project-local sources before proposing resets or dashboard edits: repo-local env files by key name and value presence, runbooks/docs, service-token paths, hosted env metadata, and branch/ref mappings. If a source needs interactive password/unlock or the user rejects it, record `source_unavailable:<name>:<reason>` and do not keep probing it without new authorization.
+
+Hosted config changes must separate:
+
+- source-of-truth local config vs live provider state
+- staging/preview/develop vs production scope
+- read-only evidence vs write authority
+- temporary local config edits vs intended repo changes
+- direct hotfix/deploy/alias state vs durable commit/PR follow-up
+
+If a worker uses local config as a push vehicle for live settings, it must restore the local file and verify the post-restore diff before claiming success. If a worker deploys a direct preview or moves an alias, it must record deployment id, alias target, no-production proof when applicable, validation URL, residual gap, and the git/PR action needed to make the live fix durable. Direct deploy evidence does not satisfy a requested commit/PR or durable implementation goal.
+
+## Local project panel
+
+Use [the project panel workflow](project-panel.md) for registration, status updates, and navigation. The [panel hooks](../../../hooks/README.md) support display updates. Native Codex tools still manage chats and messages.
+
+## Worker-Internal Sub-Agent Helper Layer
+
+Sub-agents and other native delegation helpers sit below Codex worker threads. Non-trivial Director-created workers are work-item coordinators, not monolithic executors. Most should use `orchestrate` as the top-level control loop for the assigned work item, then call the defined build/review/research/refactor/optimize/oracle playbook as the current phase. They must use at least one real worker-internal helper/subagent lane when the work is non-trivial. High-risk or non-trivial planning should use both a scout/context lane and a critique/review lane. Use `packet` only for concrete `.workflow/<slug>/packets/` artifacts.
+
+Allowed uses:
+
+- a worker thread decomposes one assigned work item into narrow subtasks
+- a worker runs a bounded scout, verification, review, or implementation helper
+- a worker uses a helper to select likely models/functions/files/tests before loading broad context
+- a worker uses a helper to map context slices, call sites, ownership, or verification surfaces
+- a dynamic workflow packet recursively needs its own mini-orchestration
+- the helper's output can be rolled up into the worker's result file or evidence summary
+
+### Native `multi_agent_v2` Helper Tooling
+
+When the active worker tool schema exposes `multi_agent_v2`, treat it as the concrete native implementation of worker-internal helper lanes. The Director still creates the top-level Codex worker thread with `codex_app`; V2 helpers sit below that worker.
+
+Detect V2 from the active tool schema, not from config assumptions. Record `multi_agent_v2 surface: available:<tools>`, `namespaced:<namespace>`, `v1-only`, `unavailable:<reason>`, or `ambiguous:<reason>`. `ambiguous` means the schema is partial or conflicting, such as `spawn_agent` missing required `task_name`, wait/follow-up tools renamed, or namespace support unclear.
+
+Map RP-style delegation roles to V2 helper profiles:
+
+| RP role pattern | V2 helper profile | Typical V2 shape |
+|---|---|---|
+| `explore` | read-only scout for one narrow question | `task_name` like `context_scout`, low/medium effort, `fork_turns:"none"` when prompt is self-contained |
+| `pair` | deep reasoning or main helper for complex subwork | latest-main/high by default, xhigh for risky/final authority, one bounded lane |
+| `engineer` | clear implementation/refactor helper after the plan is known | latest-main/high, or Spark/medium only for mechanical low-risk edits |
+| `design` | bounded critique, UX/copy/design review, or plan review | latest-main/high or xhigh; output should be a concise report path or finding list |
+
+Use active schema names and fields. If `agent_type`, `model`, `reasoning_effort`, or `service_tier` are exposed, set them from the profile. If they are hidden, encode the role, model/effort rationale, and lane boundary in the helper prompt and evidence.
+
+V2 helper lifecycle:
+
+1. Decide helper lanes during activation before broad context loading.
+2. Spawn helpers with stable lowercase task names and self-contained briefs. For parallel helpers, each brief must name sibling lanes and file/module boundaries.
+3. Prefer `fork_turns:"none"` for scouts and explicit handoffs; use a small numeric value only when recent worker context is necessary; use `"all"` only when the helper truly needs inherited context.
+4. Use `wait_agent` as a mailbox wake signal only. It is not final evidence.
+5. Use `send_message` for queued context that should not trigger a turn; use `followup_task` when a child should run another turn.
+6. After a mailbox or final-status signal, process the helper message, spot-check claims against cited files, commands, artifacts, or transcript evidence, and roll only the verified summary into the worker result.
+7. Use `list_agents` for helper status/path checks and `close_agent` once helper evidence is consumed. Completed helpers that remain open count as cleanup debt.
+8. If a helper is still running, unread, or unsummarized, the owning worker is not ready for accepted final evidence. `close_blocked:<reason>` is acceptable only after helper evidence is consumed, no helper work remains active, and cleanup was attempted or the active host offers no close operation.
+
+Rules:
+
+1. Start non-trivial work items with an orchestration control loop and a helper/context strategy: what must be scouted, which phase playbook is active, which helper/subagent lane will run, what should stay in the owning worker, and what context should be excluded. Ordinary tool use, self-checks, or saying helpers were considered does not satisfy the helper gate. Direct leaf execution is worker-internal only, never Director-inline, and is allowed only for tiny, mechanical, low-risk work with separate activation rationale for tiny, mechanical, and low-risk.
+2. Only parallelize disjoint work.
+3. Tell each sub-agent what sibling helpers are doing and what files/modules to avoid.
+4. Assign model/thinking by task shape: Spark/low for narrow probes, Spark/medium for bounded research or mechanical edits, latest-main/high for code-writing/review handoff, latest-main/xhigh for high-risk review or final authority. Spark means `gpt-5.3-codex-spark`; main means the latest non-Spark model exposed by the active schema. When V2 role/model fields are hidden, state the intended profile in the helper prompt and final evidence.
+5. Use helpers to reduce context load, not to create more transcript mass; ask for file paths, line refs, facts, commands, and confidence.
+6. Wait or poll regularly; do not leave helpers unattended.
+7. Verify helper output before the owning worker claims its work item is complete. V2 helper claims must be spot-checked against cited evidence before they appear in terminal worker evidence. If non-trivial work lacks helper/subagent capability, report `blocked:<reason>` or request Director/user direction instead of silently continuing as a monolithic executor.
+8. Roll up helper evidence into the worker summary; do not expose helper transcripts as the Director ledger.
+9. Do not let a sub-agent create a second top-level dynamic workflow plan. Nested plans must stay under the owning work item or dynamic workflow packet.
+10. Do not let a worker-internal helper create nested top-level Codex worker threads unless the Director brief explicitly delegated that authority.
+
+## Context Engine Helper Layer
+
+A context engine can implement research, planning, review, or oracle phases. The Director still owns the workflow contract.
+
+Usual mapping:
+
+- Verify workspace: bind to the project root first.
+- Broad planning: context builder in plan mode, saving a stable artifact only when handoff genuinely needs a path.
+- Investigation: context builder in question mode, then focused oracle/chat follow-up.
+- Review: git survey, then context builder in review mode with explicit comparison scope.
+- Oracle: curate selection first, then oracle send in plan/review/chat mode.
+- Handoff: save plan/review/oracle responses as artifacts only when workers need a stable path.
+
+Context-engine oracle turns are worker-internal or Director-owned context helpers. When the oracle is a separate Codex thread, use the Codex Oracle Thread Lane below; do not let ordinary worker threads message that oracle directly.
+
+Do not document a context engine as part of the Director's `codex_app` thread runtime. It may be adopted later when it is the best context builder, but the Codex Director skill remains Codex-app-native and the worker lifecycle remains `codex_app` threads.
+
+When no context engine is available:
+
+- Have the owning worker use local search and file reads sparingly.
+- Prefer structured parsers and repo-local commands over broad manual reading.
+- Write a short context note with files read, facts found, assumptions, and unknowns.
+- Use a Director-mediated separate worker/reviewer as the oracle lane when possible.
+
+## Codex Oracle Thread Lane
+
+Use this to replicate RepoPrompt-style oracle behavior with Codex threads when Browser ChatGPT Pro is unavailable, ambiguous, unsafe for the payload, unnecessary, or lower-value than a local source-backed review.
+
+- The Director creates or continues a dedicated oracle/review Codex thread using `codex_app` thread tools and records the thread id in the ledger.
+- Default to latest-main/high for ordinary independent critique and latest-main/`xhigh` when this is the ChatGPT Pro-unavailable fallback, high-risk review, final-authority gate, or conflict-resolution lane.
+- The Director sends curated Oracle Request Packets to the oracle thread: mode, exact question, evidence/artifact paths, concise summary, constraints, requested output, and fallback tolerance.
+- Worker threads do not send messages to the oracle thread directly. They return Oracle Request Packets to the Director, and the Director routes, monitors, reads, reconciles, and sends findings back.
+- Continue the same oracle thread when follow-up depends on the same evidence lineage. Create a fresh oracle thread when the question, risk level, task, or independence boundary changes.
+- Oracle output remains advisory; local evidence, tests, and source-backed facts remain authoritative.
+
+## Browser ChatGPT Pro Oracle Lane
+
+Browser ChatGPT Pro is a concrete oracle lane, not the oracle role itself.
+
+Use it when a Pro web-model second opinion is materially valuable, whether or not the user explicitly said Pro: high-ambiguity planning, product/UX/content judgment, broad architecture tradeoffs, conflicting local reviews, final external critique before high-cost work, or user requests for ChatGPT Pro/web. Prefer the local Codex oracle/review lane for sensitive payloads, routine source-backed code review, normal diffs, and fast review loops. Do not open or navigate an in-app Browser just to check whether Pro is available; inspect Pro availability only during a selected Browser Pro oracle run, or in an already-open ChatGPT tab when safe and non-disruptive.
+
+Before Browser work, read any existing local capability sentinel as a routing hint only. Preferred sentinel locations are user state (`$XDG_STATE_HOME/codex-director/chatgpt-pro-capability.json` or `~/.local/state/codex-director/chatgpt-pro-capability.json`), repo-local untracked `.codex-director/local-state/`, then Director ledger/thread notes when sandboxed. Missing, stale, or inaccessible sentinel means `unknown` and must not trigger Browser navigation.
+
+If the sentinel is expired and Browser Pro would materially affect routing, refresh it only from already-available non-invasive surfaces: an already-open safe ChatGPT tab, Browser/tab metadata that does not open a page, or the model-picker inspection from a just-completed selected Browser Pro oracle run. If no safe surface exists, leave it stale or record `refresh_status: deferred_no_safe_surface`; do not prompt for login or open Browser just to refresh. Write or refresh the sentinel only after those safe checks or a real Browser Pro oracle run.
+
+Before sending anything:
+
+1. Check for secrets, credentials, raw private data, transcripts, tokens, invite links, regulated data, or proprietary exports.
+2. Redact or summarize sensitive payloads unless the user explicitly approves the exact external submission.
+3. If ChatGPT is not signed in, ask the user to log in through the in-app Browser and resume after confirmation. Do not ask for credentials in chat.
+4. Inspect the model picker/account UI enough to record Pro availability, visible labels inspected, and selected label; keep this inspection minimal and avoid account settings or in-progress user chats.
+5. Send the prompt directly through Browser only when ChatGPT Pro or the requested Pro-tier model is available, unless the user explicitly allowed a non-Pro web fallback.
+6. Save the result as a local artifact, and save the prompt only when needed.
+7. Report only verdict, must-fix findings, Pro availability result, selected label or fallback note, prompt source/artifact path if created, and result artifact path unless more detail is needed.
+
+If Browser, upload, Pro availability detection, or Pro model selection fails:
+
+- Use the built-in Codex oracle/review lane with main/`xhigh` and record the substitution, unless the user explicitly required Browser/Pro-only/no fallback.
+- If sign-in is missing, prompt the user to log in through the in-app Browser first; use fallback only if the user declines/cannot log in and fallback is allowed.
+- Use a non-Pro web model only when the user explicitly allows that fallback; record it as non-Pro and do not call it the Pro oracle.
+
+Never silently pretend ChatGPT Pro reviewed the work, and never report a non-Pro web fallback as the Pro oracle.
+
+## Commit Authority Modes
+
+Every worker brief must name one mode:
+
+- `no-commit`: edit/verify only; an integration worker or user commits after review.
+- `commit-when-green`: worker may commit logical units after verification.
+- `ask-before-commit`: worker must stop before each commit.
+- `pr-only`: worker may prepare branch/commits but final merge is via PR/review.
+
+Derive authority from the user request and task shape. Use `commit-when-green` or `pr-only` when the user asked for durable implementation that naturally includes commits, use `no-commit` when the user explicitly forbids commits or assigns edit/verify-only work, and ask only when authority is genuinely unclear. Commits must not include secrets, raw private data, generated bulky artifacts, unrelated edits, or unresolved conflict markers.
+
+## Worktree Policy
+
+Use the main checkout only for one coherent workstream when the repo is clean enough and project practice allows it.
+
+Use a worktree when work is parallel, risky, long-running, likely to conflict, or needs an isolated branch. If project convention does not define a location, prefer a sibling managed container:
+
+```text
+<repo-parent>/<repo-name>.worktrees/<task-slug>/
+branch: director/<task-slug>
+```
+
+Record in the ledger:
+
+- repo root
+- branch
+- worktree path
+- owner worker
+- base commit
+- files/modules owned
+- status
+- merge/reconcile plan
+
+Reconciliation checklist:
+
+1. Confirm source and target branches.
+2. Confirm worker evidence and review verdict.
+3. Fetch/rebase/merge according to project practice.
+4. Resolve conflicts deliberately; rerun affected verification.
+5. Commit or PR the integrated result.
+6. Remove the worktree only after the branch/result is recoverable.
+
+Hide worktree mechanics from the user unless there is a decision, conflict, or blocker. The final user-facing status should name the branch/commit/PR and any remaining risks.
+
+## Codex Goal State Machine
+
+Goal states:
+
+```text
+none -> inspect -> create/continue -> audit -> complete
+                         |              |
+                         |              -> blocked
+                         -> pause/clear for detours or stale goals
+```
+
+Use a Goal only when the task has all three properties:
+
+- durable objective
+- evidence finish line
+- multi-turn or uncertain path
+
+Goal text must include outcome, verification surface, constraints, boundaries, iteration policy, and blocked stop condition. Completion requires evidence against the named verification surface; budget exhaustion is not completion.
+
+Workers must report Goal status in final evidence:
+
+```text
+Goal: none / active / completed / blocked / cleared
+Outcome checked:
+Verification surface:
+Evidence:
+Residual uncertainty:
+```
+
+## Installability Tooling
+
+For plugin-package checks:
+
+- Validate `.codex-plugin/plugin.json`.
+- Validate the shared marketplace entry when installability changes.
+- The panel applies lifecycle updates only to registered chats.
+- Validate every `SKILL.md` frontmatter.
+- Check relative links.
+- Verify README commands match the current plugin layout.
+- If evaluating quality, run the plugin/skill evaluator before and after changes when available.
+
+For this local build, use the installation instructions in the project README.

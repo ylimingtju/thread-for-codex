@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>项目讨论串</title>
+<style>
+:root{color-scheme:light dark;font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+--ink:light-dark(#2a2825,#eeeae6);--sub:light-dark(#625f58,#b7b1a9);--line:light-dark(#dcd9d2,#413e39);
+--soft:light-dark(#f6f5f2,#2c2a27);--wait:light-dark(#a04827,#e9a382);--blue:light-dark(#40687b,#8dbacb);--done:light-dark(#54795e,#96b89e)}
+:root[data-theme=dark]{color-scheme:dark}:root[data-theme=light]{color-scheme:light}
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;color:var(--ink);background:transparent}
+button,input,summary{font:inherit;color:inherit}button,summary{cursor:pointer}button{border:0;background:transparent}button:disabled{cursor:default}
+button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+h1,h2,p{margin:0}h1{font-size:17px;line-height:1.4;font-weight:650;overflow-wrap:anywhere}
+#full{padding:18px 16px 12px}#full header{padding-bottom:16px}#full header h1{margin-top:1px}
+.back,.open,.copy,.pair-toggle{border-radius:6px;padding:5px 8px;color:var(--blue);font-weight:550}
+.back:hover,.open:hover,.copy:hover,.pair-toggle:hover{background:var(--soft)}
+.back{margin-top:6px;padding-left:0}
+#entry{border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;gap:8px;padding:8px 10px}
+#entry strong{font-weight:600}#entry .entry-meta{font-size:12px;color:var(--sub);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#entry button{white-space:nowrap}
+#usage{border-top:1px solid var(--line)}
+#usage>summary{list-style:none;display:flex;align-items:center;gap:8px;min-height:40px;font-weight:600}
+#usage>summary::-webkit-details-marker{display:none}
+.usage-icon{flex:none;display:flex;align-items:flex-end;gap:2px;width:16px;height:13px;padding:0 1px 2px;border-bottom:1px solid var(--sub)}
+.usage-icon i{width:2px;height:5px;background:var(--sub)}.usage-icon i:nth-child(2){height:9px}.usage-icon i:nth-child(3){height:7px}
+#usage-bar{margin-left:auto;display:flex;width:clamp(28px,12vw,54px);height:5px;border-radius:3px;overflow:hidden}
+#usage-bar>i+i{border-left:1px solid Canvas}
+#usage-total{font-size:13px;font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}#usage-bar[hidden]+#usage-total{margin-left:auto}
+#usage .arrow{margin-left:3px;flex:none}#usage[open]>summary .arrow{transform:rotate(45deg)}
+#usage-scope{color:var(--sub);font-size:12px;padding-bottom:8px}
+.usage-scroll{overflow-x:auto;margin-bottom:8px}.usage-table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+.usage-table th,.usage-table td{text-align:right;padding:3px 0 3px 6px;white-space:nowrap}
+.usage-table thead th{color:var(--sub);font-weight:500;border-bottom:1px solid var(--line)}
+.usage-table th:first-child{padding-left:0;text-align:left;white-space:normal;overflow-wrap:anywhere}
+.usage-model{display:flex;align-items:baseline;gap:5px}.usage-swatch{width:7px;height:7px;border-radius:2px;flex:none}
+.usage-table tbody th,.usage-table td:last-child{font-weight:600}
+.bucket{border-top:1px solid var(--line);padding:8px 0}
+.bucket>summary{list-style:none;display:flex;align-items:center;gap:8px;min-height:32px;font-weight:610}
+.bucket>summary::-webkit-details-marker{display:none}
+.mark{width:7px;height:7px;border-radius:50%;background:var(--blue)}
+[data-group="0"] .mark{background:var(--wait)}[data-group="2"] .mark{background:var(--done)}
+.count{color:var(--sub);font-variant-numeric:tabular-nums;font-size:12px;font-weight:450}
+.arrow{margin-left:auto;width:7px;height:7px;border:solid var(--sub);border-width:0 1.5px 1.5px 0;transform:rotate(-45deg);margin-right:4px}
+.bucket[open]>summary .arrow{transform:rotate(45deg)}
+.row{padding:9px 4px 10px 15px}.row+.row{border-top:1px solid var(--line)}
+.subject{font-size:14px;font-weight:600;display:block;text-align:left;padding:0;line-height:1.5;overflow-wrap:anywhere}
+button.subject:hover{text-decoration:underline;text-underline-offset:3px}
+.row p{font-size:13px;color:var(--sub);overflow-wrap:anywhere;white-space:pre-line;margin-top:3px}
+[data-group="0"] .row p{color:var(--wait)}
+.row footer{display:flex;gap:7px;align-items:baseline;color:var(--sub);font-size:11.5px;margin-top:5px}
+#empty,#status,#tip,.pair-hint{font-size:12px;color:var(--sub)}#empty{padding:8px 0}
+#status:empty{display:none}#status,#tip{margin:5px 9px}
+#pair,#fallback{padding:11px;max-width:540px}label{font-weight:560}
+.controls{display:flex;gap:8px;align-items:center;margin-top:5px}.controls input,#url{min-width:0;width:100%;border-radius:5px;border:1px solid var(--line);background:transparent;padding:5px 7px}
+#pair button{border-radius:5px;background:var(--soft);padding:6px 10px;white-space:nowrap}
+#fallback{border-top:1px solid var(--line);font-size:12px;color:var(--sub)}#url{font:12px ui-monospace,monospace}
+#tip code{user-select:all;overflow-wrap:anywhere}#pair-toggle{font-size:12px} .pair-hint{margin-top:4px}
+@media(max-width:300px){#full{padding:12px 9px}#entry{flex-wrap:wrap}.row{padding-left:9px}}
+</style>
+</head>
+<body>
+<main>
+<section id="entry" hidden aria-label="项目讨论串入口">
+<strong>项目讨论串</strong><span class="entry-meta" id="entry-count"></span><button type="button" id="entry-open" class="open">在右侧打开 ›</button>
+</section>
+<section id="full" hidden aria-label="项目讨论串">
+<header><h1 id="title"></h1><button type="button" id="back" class="back" hidden>‹ 返回项目总讨论</button></header>
+<details id="usage" hidden>
+<summary><span class="usage-icon" aria-hidden="true"><i></i><i></i><i></i></span><span>Token 用量</span><span id="usage-bar" aria-hidden="true"></span><span id="usage-total"></span><span class="arrow" aria-hidden="true"></span></summary>
+<p id="usage-scope"></p>
+<div class="usage-scroll" id="usage-breakdown" hidden><table class="usage-table" aria-label="各模型累计 Token 用量"><thead><tr><th scope="col">模型</th><th scope="col">输入</th><th scope="col">输出</th><th scope="col">合计</th></tr></thead><tbody id="usage-rows"></tbody></table></div>
+</details>
+<div id="buckets"></div><p id="empty" hidden>还没有已登记的讨论串。</p>
+</section>
+<p id="tip" hidden>可在右侧标签菜单选择「项目讨论串」。<button id="pair-toggle" type="button" class="pair-toggle">显示配对码</button> <code id="pair-key" hidden></code></p>
+<form id="pair" hidden><label for="key">连接当前聊天的项目面板</label><div class="controls"><input id="key" type="password" required autocomplete="off" spellcheck="false" placeholder="只读配对码"><button>连接</button></div><p class="pair-hint">使用当前聊天中的只读配对码。</p></form>
+<section id="fallback" hidden><label for="url" id="failed-title"></label><div class="controls"><input id="url" readonly><button class="copy" id="copy" type="button">复制</button></div></section>
+<p role="status" id="status">正在连接…</p>
+</main>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const inlineEntry = '__DIRECTOR_VIEW__' === 'entry';
+const embedded = window.parent !== window;
+const groups = ['等你回复','进行中','已完成'];
+const states = {preparing:'准备中',running:'进行中',waiting:'等你回复',review:'待总线程确认',completed:'已完成',blocked:'受阻'};
+const formatTime = new Intl.DateTimeFormat('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
+const tokenNumber = new Intl.NumberFormat('en-US');
+const shortTokens = new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1});
+let data, key='', mode=inlineEntry?'inline':'fullscreen', sequence=0, epoch=0, bridgeReady=false;
+let expanded=[true,true,false], signature=null, refreshTimer, refreshing=false, onScreen=true, currentHost, panelHelp=false;
+let usageSignature=null;
+const pending=new Map();
+const shown=()=>onScreen && !document.hidden;
+const full=()=>!inlineEntry || mode==='fullscreen';
+function el(tag,cls,value){const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=value;return n}
+function message(value){$('status').textContent=value}
+function post(obj){if(embedded)parent.postMessage({jsonrpc:'2.0',...obj},'*')}
+function rpc(method,params){
+  return new Promise((resolve,reject)=>{
+    const id=++sequence;
+    const timer=setTimeout(()=>{pending.delete(id);reject(new Error('桌面端未响应。'))},12000);
+    pending.set(id,{resolve,reject,timer});post({id,method,params});
+  });
+}
+async function tool(name,args={}){
+  const r=await rpc('tools/call',{name,arguments:args});
+  if(r?.isError){
+    const denied=new Error(r.content?.[0]?.text || '无法读取面板。');
+    denied.toolRejected=true;throw denied;
+  }
+  if(!r?.structuredContent)throw new Error('无法读取面板。');
+  return r.structuredContent;
+}
+function clearView(){
+  ++epoch;data=null;key='';signature=null;expanded=[true,true,false];panelHelp=false;
+  usageSignature=null;$('usage').open=false;
+  $('buckets').replaceChildren();$('pair-key').hidden=true;$('pair-key').textContent='';
+  $('fallback').hidden=$('entry').hidden=$('full').hidden=$('tip').hidden=true;$('pair').hidden=false;
+  $('url').value='';$('failed-title').textContent='';$('key').value='';message('');
+}
+function hostContext(c){
+  if(!c)return;
+  const hostId=c.threadId || c.conversationId;
+  if(hostId && currentHost && hostId!==currentHost){clearView();if(bridgeReady)refresh()}
+  if(hostId)currentHost=hostId;
+  if(c.theme==='dark'||c.theme==='light')document.documentElement.dataset.theme=c.theme;
+  if(c.displayMode && c.displayMode!==mode){mode=c.displayMode;signature=null;render();schedule()}
+}
+function fallbackTitle(title){$('failed-title').textContent='未能打开「'+title+'」，可以复制聊天链接。'}
+function fallback(id,title,url){
+  $('fallback').dataset.thread=id;fallbackTitle(title);
+  $('url').value=url;$('fallback').hidden=false;
+}
+async function openChat(id,title){
+  if(!id || !data)return;
+  const current=epoch;
+  $('fallback').hidden=true;message('');
+  try{
+    const result=await tool('open_thread',{thread_id:id,view_key:key});
+    if(current!==epoch)return;
+    if(!result.opened)fallback(id,result.title,result.url);
+  }catch(err){
+    if(current!==epoch)return;
+    if(err.toolRejected){clearView();message(err.message);return}
+    fallback(id,title,'codex://threads/'+encodeURIComponent(id));message(err.message);
+  }
+}
+function makeRow(row){
+  const box=el('div','row');
+  const canOpen=!!row.thread_id && row.status!=='preparing';
+  const name=el(canOpen?'button':'span','subject',row.title);
+  if(canOpen){name.type='button';name.dataset.thread=row.thread_id;name.onclick=()=>openChat(row.thread_id,row.title)}
+  box.append(name);
+  if(row.summary)box.append(el('p','',row.summary));
+  const footer=el('footer'), date = new Date(row.updated_at);
+  footer.append(el('span','',states[row.status] || '状态待确认'));
+  if(row.updated_at && Number.isFinite(date.getTime())){
+    const time=el('time','',formatTime.format(date));time.dateTime=date.toISOString();time.title=date.toLocaleString('zh-CN');footer.append(time);
+  }
+  box.append(footer);return box;
+}
+function modelLabel(model){
+  if(model==='unknown')return '未识别模型';
+  return model.replace(/^gpt-([\d.]+)(?:-(sol|astra|terra))?$/i,(_,version,family)=>
+    'GPT-'+version+(family?' '+family[0].toUpperCase()+family.slice(1).toLowerCase():''));
+}
+function modelColor(model){
+  if(model==='unknown')return 'var(--sub)';
+  if(model==='gpt-6.2-sol')return 'light-dark(#488373,#83bcab)';
+  if(model==='gpt-6.2-astra')return 'light-dark(#7f83a3,#aaadd3)';
+  let hue=0;
+  for(const ch of model)hue=(hue*31+ch.codePointAt(0))%360;
+  return 'light-dark(hsl('+hue+' 27% 45%),hsl('+hue+' 32% 68%))';
+}
+function renderUsage(usage){
+  const sig=JSON.stringify(usage??null);
+  if(sig===usageSignature)return;
+  usageSignature=sig;
+  const models=usage?.models??[], hasData=models.length>0;
+  const total=$('usage-total'),bar=$('usage-bar'),rows=$('usage-rows');
+  const prefix=usage?.partial?'已记录 ':'';
+  total.textContent=hasData?prefix+shortTokens.format(usage.total_tokens).toLowerCase():'暂无记录';
+  total.title=hasData?prefix+tokenNumber.format(usage.total_tokens)+' Token':'';
+  $('usage-scope').textContent='总讨论及已登记执行串 · 累计'+(usage?.partial?' · 部分记录缺失':'');
+  $('usage-breakdown').hidden=!hasData;
+  bar.hidden=!hasData||usage.total_tokens===0;
+  bar.replaceChildren();rows.replaceChildren();
+  for(const item of models){
+    const label=modelLabel(item.model),color=modelColor(item.model);
+    if(item.total_tokens>0){
+      const segment=el('i');
+      segment.style.flex=String(item.total_tokens/usage.total_tokens);
+      segment.style.background=color;bar.append(segment);
+    }
+    const tr=el('tr'),name=el('th'),group=el('span','usage-model'),swatch=el('span','usage-swatch');
+    swatch.style.background=color;name.scope='row';name.title=item.model;
+    group.append(swatch,el('span','',label));name.append(group);tr.append(name);
+    for(const n of [item.input_tokens,item.output_tokens,item.total_tokens])tr.append(el('td','',tokenNumber.format(n)));
+    rows.append(tr);
+  }
+}
+function render(){
+  if(!data)return;
+  $('entry').hidden=full();$('full').hidden=!full();$('pair').hidden=true;$('tip').hidden=!panelHelp||full();
+  const worker=data.role==='worker';
+  $('entry-open').textContent=worker?'返回项目总讨论':'在右侧打开 ›';
+  $('entry-open').title=worker?data.director_title:'';
+  $('back').hidden=!worker;$('back').title=data.director_title;$('title').textContent=data.director_title;
+  if(!$('fallback').hidden){
+    const id=$('fallback').dataset.thread;
+    const title=id===data.director_id?data.director_title:data.threads.find(row=>row.thread_id===id)?.title;
+    if(title)fallbackTitle(title);
+  }
+  const visible=data.threads.filter(row=>row.status!=='archived');
+  const lists=[[],[],[]];
+  for(const row of visible) lists[row.status==='waiting'?0:row.status==='completed'?2:1].push(row);
+  const entryLabel=$('entry-count');
+  entryLabel.textContent=worker?(data.threads[0]?.title || '执行串'):(lists[0].length?lists[0].length+' 项等你回复':visible.length+' 个讨论串');
+  entryLabel.title=worker?entryLabel.textContent:'';
+  $('empty').hidden=visible.length!==0;
+  if(!full())return;
+  $('usage').hidden=worker;
+  if(!worker)renderUsage(data.token_usage);
+  const sig=JSON.stringify(visible);
+  if(sig===signature)return;
+  signature=sig;
+  const focus=document.activeElement?.dataset;
+  const focusedId=focus?.thread,focusedGroup=focus?.group;
+  const fragment=document.createDocumentFragment();
+  groups.forEach((title,i)=>{
+    const section=el('details','bucket');section.open=expanded[i];section.dataset.group=String(i);
+    const label=el('summary');label.dataset.group=String(i);
+    label.append(el('span','mark'),el('span','',title),el('span','count',String(lists[i].length)),el('span','arrow'));
+    section.append(label);
+    section.ontoggle=()=>{if(section.isConnected)expanded[i]=section.open};
+    lists[i].sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''));
+    for(const row of lists[i])section.append(makeRow(row));
+    fragment.append(section);
+  });
+  $('buckets').replaceChildren(fragment);
+  if(focusedId || focusedGroup!=null){
+    const controls=$('buckets').querySelectorAll('button,summary');
+    [...controls].find(n=>focusedId?n.dataset.thread===focusedId:n.dataset.group===focusedGroup)?.focus({preventScroll:true});
+  }
+}
+function consume(d){
+  if(!d?.paired){clearView();schedule();return}
+  if(data && (d.director_id!==data.director_id || d.view_key!==key))clearView();
+  data=d;key=d.view_key;message('');render();schedule();
+}
+async function refresh(){
+  if(!bridgeReady || refreshing || !shown())return;
+  refreshing=true;const current=epoch;
+  let snapshot,error;
+  try{
+    snapshot=await tool('snapshot',key?{view_key:key}:{});
+  }catch(e){error=e}finally{refreshing=false}
+  if(current!==epoch){refresh();return}
+  if(error){
+    if(error.toolRejected || !data)clearView();
+    message(error.message);schedule();return;
+  }
+  consume(snapshot);
+}
+function schedule(){
+  clearInterval(refreshTimer);
+  if(bridgeReady && shown() && data && (full() || data.role==='worker'))refreshTimer=setInterval(refresh,1000);
+}
+function visibility(){schedule();if(shown())refresh()}
+window.addEventListener('message',e=>{
+  if(!embedded || e.source!==parent || e.data?.jsonrpc!=='2.0')return;
+  const r=e.data;
+  if(r.id!=null && !r.method){
+    const call=pending.get(r.id);if(!call)return;
+    pending.delete(r.id);clearTimeout(call.timer);
+    if(r.error)call.reject(new Error(r.error.message || '宿主调用失败。'));else call.resolve(r.result);
+  }else if(r.method==='ui/notifications/tool-result'){
+    const seed=r.params?.structuredContent;
+    if(seed && 'paired' in seed && (!data || (seed.paired && seed.view_key!==key))){
+      ++epoch;consume(seed);if(seed.paired)refresh();
+    }
+  }else if(r.method==='ui/notifications/host-context-changed'){
+    hostContext(r.params);
+  }else if(r.method==='ui/resource-teardown' && r.id!=null){
+    bridgeReady=false;clearInterval(refreshTimer);post({id:r.id,result:{}});
+  }
+});
+$('entry-open').onclick=async()=>{
+  if(data?.role==='worker'){await openChat(data.director_id,data.director_title);return}
+  $('entry-open').disabled=true;
+  try{
+    await rpc('ui/request-display-mode',{mode:'fullscreen'});
+    panelHelp=mode!=='fullscreen';
+  }catch{panelHelp=true}
+  finally{$('entry-open').disabled=false;render()}
+};
+$('pair-toggle').onclick=()=>{
+  const field=$('pair-key');field.hidden=!field.hidden;field.textContent=field.hidden?'':key;
+  $('pair-toggle').textContent=field.hidden?'显示配对码':'隐藏配对码';
+};
+$('back').onclick=()=>openChat(data.director_id,data.director_title);
+$('copy').onclick=async()=>{
+  try{await navigator.clipboard.writeText($('url').value);message('已复制聊天链接。')}
+  catch{$('url').select();message('按 ⌘C 复制所选链接。')}
+};
+$('pair').onsubmit=async(e)=>{
+  e.preventDefault();const entered=$('key').value.trim();if(!entered)return;
+  const current=++epoch;
+  try{
+    const d=await tool('snapshot',{view_key:entered});if(current!==epoch)return;
+    if(!d.paired)throw new Error('配对码与当前聊天不匹配。');
+    $('key').value='';consume(d);
+  }catch(e){if(current===epoch)message(e.message)}
+};
+document.addEventListener('visibilitychange',visibility);
+window.addEventListener('focus',visibility);
+new IntersectionObserver(([entry])=>{
+  if(onScreen!==entry.isIntersecting){onScreen=entry.isIntersecting;visibility()}
+}).observe(document.querySelector('main'));
+if(embedded){
+  let height=-1;
+  new ResizeObserver(()=>{
+    const next=Math.ceil(document.querySelector('main').getBoundingClientRect().height);
+    if(next>0 && next!==height){height=next;post({method:'ui/notifications/size-changed',params:{height:next}})}
+  }).observe(document.querySelector('main'));
+  rpc('ui/initialize',{protocolVersion:'2026-01-26',appCapabilities:{availableDisplayModes:inlineEntry?['inline','fullscreen']:['fullscreen']},
+    appInfo:{name:'director-panel',version:'__DIRECTOR_VERSION__'}}).then(r=>{
+      hostContext(r?.hostContext);post({method:'ui/notifications/initialized',params:{}});bridgeReady=true;
+      visibility();
+    }).catch(()=>{message('请在 Codex 当前聊天中重新打开项目讨论串面板。')});
+}else message('请从 Codex 项目总讨论或执行串打开此面板。');
+</script>
+</body></html>

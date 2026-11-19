@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "director-panel": {
+      "command": "python3",
+      "args": ["-B", "./panel_server.py"],
+      "cwd": ".",
+      "env_vars": ["HOME", "CODEX_HOME", "PATH"],
+      "tool_timeout_sec": 15
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "name": "codex-director",
+  "version": "1.0.0",
+  "description": "受 Claude Projects 启发，Thread for Codex 让你在项目总讨论里分派任务，点开对应讨论串就能继续追问。 Inspired by Claude Projects, Thread for Codex lets you delegate tasks from one project chat and follow up in each thread.",
+  "author": {
+    "name": "Thread for Codex contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "director",
+    "workflow",
+    "delegation",
+    "review",
+    "oracle"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Thread for Codex",
+    "shortDescription": "项目讨论串侧栏 · Project threads",
+    "longDescription": "受 Claude Projects 启发，Thread for Codex 让你在项目总讨论里分派任务，点开对应讨论串就能继续追问。 Inspired by Claude Projects, Thread for Codex lets you delegate tasks from one project chat and follow up in each thread.",
+    "developerName": "Thread for Codex contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "$codex-director:codex-director 按需新建或续用本项目的执行串。",
+      "使用 $codex-director:codex-director 继续跟进本项目的讨论串，告诉我有哪些问题等我回复。",
+      "$codex-director:codex-director Create or reuse project threads as needed."
+    ],
+    "composerIcon": "./assets/app-icon.png",
+    "logo": "./assets/app-icon.png"
+  }
+}

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Thread for Codex"
+  short_description: "Coordinate project work across Codex worker threads with quiet, signal-first monitoring"
+  default_prompt: "Use $codex-director:codex-director to start this project's Director: preserve its name and pin this thread, record runtime status, then ask for the objective."
+
+policy:
+  allow_implicit_invocation: true

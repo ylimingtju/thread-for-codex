@@ -1,0 +1,10 @@
+{
+  "name": "director-local",
+  "interface": { "displayName": "Thread for Codex" },
+  "plugins": [{
+    "name": "codex-director",
+    "source": { "source": "local", "path": "./plugins/codex-director" },
+    "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+    "category": "Productivity"
+  }]
+}
