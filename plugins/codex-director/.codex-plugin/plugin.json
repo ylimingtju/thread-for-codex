@@ -1,6 +1,6 @@
 {
   "name": "codex-director",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "受 Claude Projects 启发，Thread for Codex 让你在项目总讨论里分派任务，点开对应讨论串就能继续追问。 Inspired by Claude Projects, Thread for Codex lets you delegate tasks from one project chat and follow up in each thread.",
   "author": {
     "name": "Thread for Codex contributors"

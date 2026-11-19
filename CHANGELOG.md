@@ -1,5 +1,11 @@
 # Thread for Codex · 版本记录 / Release notes
 
+## 1.0.2
+
+插件图标换为「换乘线」。深蓝底上的三条线路与白色换乘环呼应项目总讨论与执行串。
+
+The new plugin icon uses three transit lines and a white interchange ring on a navy background to represent a project chat and its threads.
+
 ## 1.0.1
 
 总讨论在所有受支持的推理强度下都可以派工、追问和验收。新建总讨论时仍默认使用 `xhigh`（模型支持时）。在 Codex 中手动调整强度后，继续对话或收到执行串回报时都会沿用当前选择。
