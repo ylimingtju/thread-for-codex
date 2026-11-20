@@ -6,7 +6,8 @@
 
 ### 中文
 
-- **从最新答复打开面板。** 点总讨论新答复末尾的「打开项目讨论串」，即可在支持插件链接的 Codex 桌面端查看当前总讨论的任务。首次点击时，Codex 可能询问用哪个插件打开。
+- **从新答复打开面板。** 总讨论每条新答复末尾都有「打开项目讨论串」。在支持插件链接的 Codex 桌面端，点击即可查看当前总讨论的任务。首次点击时，Codex 可能询问用哪个插件打开。
+- 此前仅在本机试用的旧版文件查看器方案已撤回。如果右侧出现两个同名标签，可以关闭多余的标签，保留正在使用的一个。
 - **直接在旧执行串追问。** 已登记的执行串在恢复时按聊天 ID 找回所属总讨论，新答复末尾附「← 返回总讨论」。无需重新派工。**强烈建议每个项目只设一个总讨论**，其余聊天用作执行串。
 - **补正时保留完整答复。** 正确的末行链接只在本机检查。缺失或指向错误时，插件最多请求模型补正一次，要求保留完整正文和成果链接。如果总讨论只读到补充的链接，会回原串取完整交付再汇总。
 
@@ -16,7 +17,8 @@ momo-land 已在 Windows 11 上验证 v1.1.0 试装版的安装、升级、面�
 
 ### English
 
-- **Open the panel from the latest reply.** Select **打开项目讨论串** (Open project threads) at the end of a new main-chat reply to see that chat’s tasks on the right. This requires a Codex desktop version that supports plugin links. Codex may ask which plugin to use on first click.
+- **Open the panel from a new reply.** Each new main-chat reply ends with **打开项目讨论串** (Open project threads). Select it to see that chat’s tasks on the right in a Codex desktop version that supports plugin links. Codex may ask which plugin to use on first click.
+- The older file-viewer approach was tried only locally and has been withdrawn. If two tabs with the same name appear on the right, you can close the extra tab and keep the one you’re using.
 - **Follow up in an existing worker chat.** When a registered worker resumes, the plugin looks up its main chat by ID and adds **← 返回总讨论** (Back to main chat) to new replies. You can continue in the same chat without a new assignment. **We strongly recommend one main chat per project.**
 - **Keep the full answer when correcting a link.** A correct final link needs only a local check. For a missing or incorrect link, the plugin asks for at most one correction, with the full answer and its deliverable links. If the main chat receives only a link, it reads the worker’s full reply before summarizing.
 
