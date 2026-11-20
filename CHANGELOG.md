@@ -2,7 +2,7 @@
 
 ## 1.1.1 · macOS
 
-[下载 macOS v1.1.1 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.1/thread-for-codex-macos.zip) · [下载 Windows v1.0.4 / Download for Windows](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)
+[下载 macOS v1.1.1 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.1/thread-for-codex-macos.zip) · [Windows 正式版 / Stable v1.0.4](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip) · [Windows 试装版 / Preview v1.1.0](https://github.com/ylimingtju/thread-for-codex/archive/5bd50f46f4fbaa7a3074705416137a978a477939.zip)
 
 ### 中文
 
@@ -10,7 +10,9 @@
 - **直接在旧执行串追问。** 已登记的执行串在恢复时按聊天 ID 找回所属总讨论，新答复末尾附「← 返回总讨论」。无需重新派工。**强烈建议每个项目只设一个总讨论**，其余聊天用作执行串。
 - **补正时保留完整答复。** 正确的末行链接只在本机检查。缺失或指向错误时，插件最多请求模型补正一次，要求保留完整正文和成果链接。如果总讨论只读到补充的链接，会回原串取完整交付再汇总。
 
-升级后，在「设置 → Hooks」审查并信任本插件的 `SessionStart`、`UserPromptSubmit` 和 `Stop`。当前任务结束后，退出并重新打开 Codex，让已有聊天载入更新。Windows 当前发行版为 v1.0.4。[Codex Hooks 说明](https://learn.chatgpt.com/docs/hooks#stop)
+升级后，在「设置 → Hooks」审查并信任本插件的 `SessionStart`、`UserPromptSubmit` 和 `Stop`。当前任务结束后，退出并重新打开 Codex，让已有聊天载入更新。[Codex Hooks 说明](https://learn.chatgpt.com/docs/hooks#stop)
+
+momo-land 已在 Windows 11 上验证 v1.1.0 试装版的安装、升级、面板资源和执行串返回链接。Windows 正式版为 v1.0.4，v1.1.0 尚待登录桌面的人工点按验收。[测试记录](https://github.com/ylimingtju/thread-for-codex/pull/3) · [验收进度](https://github.com/ylimingtju/thread-for-codex/issues/2)
 
 ### English
 
@@ -18,7 +20,9 @@
 - **Follow up in an existing worker chat.** When a registered worker resumes, the plugin looks up its main chat by ID and adds **← 返回总讨论** (Back to main chat) to new replies. You can continue in the same chat without a new assignment. **We strongly recommend one main chat per project.**
 - **Keep the full answer when correcting a link.** A correct final link needs only a local check. For a missing or incorrect link, the plugin asks for at most one correction, with the full answer and its deliverable links. If the main chat receives only a link, it reads the worker’s full reply before summarizing.
 
-After upgrading, review and trust the plugin’s `SessionStart`, `UserPromptSubmit`, and `Stop` hooks under Settings → Hooks. When your active tasks finish, quit and reopen Codex to load the update in existing chats. The current Windows release is v1.0.4. [Codex hook reference](https://learn.chatgpt.com/docs/hooks#stop)
+After upgrading, review and trust the plugin’s `SessionStart`, `UserPromptSubmit`, and `Stop` hooks under Settings → Hooks. When your active tasks finish, quit and reopen Codex to load the update in existing chats. [Codex hook reference](https://learn.chatgpt.com/docs/hooks#stop)
+
+momo-land tested the v1.1.0 preview on Windows 11, including installation, upgrade, panel resource access, and worker return links. Windows v1.0.4 remains the stable release pending a signed-in desktop check. [Test results](https://github.com/ylimingtju/thread-for-codex/pull/3) · [Verification status](https://github.com/ylimingtju/thread-for-codex/issues/2)
 
 ## 1.1.0 · macOS
 

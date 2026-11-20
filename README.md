@@ -5,9 +5,11 @@ Inspired by Claude Projects, Thread for Codex lets you delegate tasks from one p
 
 中文 · [English](README.en.md)
 
-**[下载 macOS v1.1.1（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.1/thread-for-codex-macos.zip)** · **[下载 Windows v1.0.4（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)** · [安装说明](#安装与启动)
+**[下载 macOS v1.1.1（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.1/thread-for-codex-macos.zip)** · **[Windows 正式版 v1.0.4（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)** · **[Windows 试装版 v1.1.0（ZIP）](https://github.com/ylimingtju/thread-for-codex/archive/5bd50f46f4fbaa7a3074705416137a978a477939.zip)** · [安装说明](#安装与启动)
 
-本次更新面向 macOS。Windows 请继续使用 v1.0.4，新版待 momo-land 在 Windows 真机上确认。[v1.1.1 更新说明](CHANGELOG.md) · [v1.1.0 使用指南、实测海报与常见问题](docs/release-v1.1.0.md#zh)
+Windows 试装版使用 momo-land 在 Windows 11 上测试的提交 `5bd50f4`。全新安装、重装和从 v1.0.4 升级均已通过，升级后保留已有讨论串登记。Codex 服务能读取面板资源，并为已登记执行串提供返回链接。发布前还需在已登录的桌面端手动核对派工、打开原串和点回总讨论的流程。[真机测试记录](https://github.com/ylimingtju/thread-for-codex/pull/3) · [桌面验收进度](https://github.com/ylimingtju/thread-for-codex/issues/2)
+
+[v1.1.1 更新说明](CHANGELOG.md) · [v1.1.0 使用指南、实测海报与常见问题](docs/release-v1.1.0.md#zh)
 
 ![三股彩线从同一个线轴延伸开来](docs/images/threads-cover.jpg)
 
@@ -21,7 +23,7 @@ Thread for Codex 是适用于 macOS 和 Windows 的 Codex 项目讨论串插件�
 
 需要已登录的 Codex 桌面端、支持 `codex plugin` 的 Codex 命令行，以及 Python 3.9 或以上。Python 部分只使用标准库。
 
-1. 从上方下载对应系统的 ZIP 并解压。使用 Git 的用户请检出对应的发布标签（macOS 为 `v1.1.1`，Windows 为 `v1.0.4`）。在源码根目录运行对应命令。macOS 用户请选一个准备长期保留的目录。
+1. 从上方下载对应系统的 ZIP 并解压。使用 Git 安装正式版时，macOS 检出标签 `v1.1.1`，Windows 检出 `v1.0.4`。安装 Windows v1.1.0 试装版时，请检出已测试的提交 `5bd50f4`。在源码根目录运行对应命令。macOS 用户请选一个准备长期保留的目录。
 
    | 系统 | 安装命令 |
    | --- | --- |

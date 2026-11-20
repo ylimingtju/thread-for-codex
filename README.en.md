@@ -5,9 +5,11 @@
 
 [中文](README.md) · English
 
-**[Download for macOS · v1.1.1 (ZIP)](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.1/thread-for-codex-macos.zip)** · **[Download for Windows · v1.0.4 (ZIP)](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)** · [Installation instructions](#install-and-start)
+**[Download for macOS · v1.1.1 (ZIP)](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.1/thread-for-codex-macos.zip)** · **[Windows stable · v1.0.4 (ZIP)](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)** · **[Windows preview · v1.1.0 (ZIP)](https://github.com/ylimingtju/thread-for-codex/archive/5bd50f46f4fbaa7a3074705416137a978a477939.zip)** · [Installation instructions](#install-and-start)
 
-This update is for macOS. Windows users can continue with v1.0.4 while the newer version awaits testing by momo-land on Windows. [v1.1.1 release notes](CHANGELOG.md) · [v1.1.0 guide, benchmark posters and FAQ](docs/release-v1.1.0.md#en)
+The Windows preview uses commit `5bd50f4`, which momo-land tested on Windows 11. Fresh installation, reinstallation, and an upgrade from v1.0.4 all passed. The upgrade kept existing thread registrations. The Codex service read the panel resources and supplied return links to registered workers. A signed-in desktop check is still pending for assigning a task, opening its worker chat, and following the link back. [Windows test results](https://github.com/ylimingtju/thread-for-codex/pull/3) · [Desktop verification](https://github.com/ylimingtju/thread-for-codex/issues/2)
+
+[v1.1.1 release notes](CHANGELOG.md) · [v1.1.0 guide, benchmark posters and FAQ](docs/release-v1.1.0.md#en)
 
 ![Three colored threads extend from a single reel](docs/images/threads-cover.jpg)
 
@@ -21,7 +23,7 @@ Thread for Codex adds a project thread panel to Codex for macOS and Windows. For
 
 You need a signed-in Codex desktop app, a Codex CLI that supports `codex plugin`, and Python 3.9 or later. The plugin uses only the Python standard library.
 
-1. Download the ZIP for your system above and extract it. If you use Git, check out the release tag for your system (`v1.1.1` for macOS or `v1.0.4` for Windows). On macOS, choose a folder you plan to keep. Run the command for your system from the source folder.
+1. Download the ZIP for your system above and extract it. If you use Git, check out `v1.1.1` for stable macOS, `v1.0.4` for stable Windows, or the tested commit `5bd50f4` for the Windows v1.1.0 preview. On macOS, choose a folder you plan to keep. Run the command for your system from the source folder.
 
    | System | Install command |
    | --- | --- |
