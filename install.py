@@ -58,18 +58,30 @@ def find_codex(explicit):
     raise SystemExit("找不到支持 codex plugin 的 Codex CLI。请使用 --codex 指定其路径。")
 
 
+def _windows_file_path(path):
+    """Use Win32 extended-length paths for staging filesystem operations."""
+    value = str(path)
+    if value.startswith("\\\\?\\"):
+        return path
+    if value.startswith("\\\\"):
+        return Path("\\\\?\\UNC\\" + value[2:])
+    return Path("\\\\?\\" + value)
+
+
 def windows_marketplace():
     """Prepare the Windows checkout payload before Codex copies it into its plugin cache."""
     codex_home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
     market = (codex_home / "codex-director").resolve() / "windows-marketplace"
-    market.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="marketplace-", dir=market.parent) as temp:
+    target = _windows_file_path(market)
+    source = _windows_file_path(ROOT)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="marketplace-", dir=target.parent) as temp:
         stage = Path(temp) / "new"
         backup = Path(temp) / "previous"
         (stage / MARKETPLACE.parent).mkdir(parents=True)
-        shutil.copy2(ROOT / MARKETPLACE, stage / MARKETPLACE)
-        shutil.copy2(ROOT / "LICENSE", stage)
-        shutil.copytree(ROOT / PLUGIN, stage / PLUGIN, ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copy2(source / MARKETPLACE, stage / MARKETPLACE)
+        shutil.copy2(source / "LICENSE", stage)
+        shutil.copytree(source / PLUGIN, stage / PLUGIN, ignore=shutil.ignore_patterns("__pycache__"))
         config = stage / PLUGIN / ".mcp.json"
         data = json.loads(config.read_text(encoding="utf-8"))
         server = data["mcpServers"]["director-panel"]
@@ -79,16 +91,19 @@ def windows_marketplace():
         hooks_file = stage / PLUGIN / "hooks" / "hooks.json"
         hooks = json.loads(hooks_file.read_text(encoding="utf-8"))
         footer_hook = hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]
-        footer_hook["commandWindows"] = f'"{sys.executable}" -B -X utf8 "%PLUGIN_ROOT%/worker_reply.py"'
+        python_path = sys.executable.replace("'", "''")
+        footer_hook["commandWindows"] = (
+            f"& '{python_path}' -B -X utf8 (Join-Path $env:PLUGIN_ROOT 'worker_reply.py')"
+        )
         hooks_file.write_text(json.dumps(hooks, indent=2) + "\n", encoding="utf-8")
 
-        if market.exists():
-            market.rename(backup)
+        if target.exists():
+            target.rename(backup)
         try:
-            stage.rename(market)
+            stage.rename(target)
         except OSError:
             if backup.exists():
-                backup.rename(market)
+                backup.rename(target)
             raise
     return market
 
