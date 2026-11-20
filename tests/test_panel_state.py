@@ -39,8 +39,9 @@ class PanelLifecycle(unittest.TestCase):
                 event = {"hook_event_name": "UserPromptSubmit", "session_id": actor, "prompt": "Continue"}
                 output = subprocess.check_output([sys.executable, "-B", str(script)],
                                                  input=json.dumps(event), encoding="utf-8")
-                if actor == worker:
-                    footer = f"[← 返回总讨论](codex://threads/{director})"
+                if actor != ordinary:
+                    footer = (f"[← 返回总讨论](codex://threads/{director})" if actor == worker
+                              else f"[打开项目讨论串]({state.PANEL_LINK})")
                     context = json.loads(output)["hookSpecificOutput"]["additionalContext"]
                     self.assertEqual(context.splitlines()[-1], footer)
                 else:

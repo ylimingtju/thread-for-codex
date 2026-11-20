@@ -26,8 +26,13 @@ def descriptor(name, title, description, resource=None):
         meta['ui']['resourceUri'] = resource
         meta['openai/outputTemplate'] = resource
         meta['openai/ui'] = {'preferredModelDisplayMode': 'fullscreen' if resource == PANEL else 'inline'}
-        if resource == PANEL:
+        if name == 'show_panel':
             meta['openai/ui']['entrypoints'] = [{'type': 'thread'}]
+        elif name == 'open_panel_link':
+            fields = {'url': {'type': 'string', 'enum': [panel_state.PANEL_LINK]}}
+            required = ['url']
+            meta['ui']['visibility'] = ['app']
+            meta['openai/ui']['entrypoints'] = [{'type': 'deepLink', 'patterns': [panel_state.PANEL_LINK]}]
     if name == 'open_thread':
         fields['thread_id'] = {'type': 'string', 'format': 'uuid'}
         required.append('thread_id')
@@ -42,6 +47,7 @@ def descriptor(name, title, description, resource=None):
 TOOLS = {tool['name']: tool for tool in (
     descriptor('show_entry', '项目讨论串入口', '在总讨论显示面板入口，在执行串显示返回总讨论的入口。传入当前聊天的只读配对码。', ENTRY),
     descriptor('show_panel', '项目讨论串', '打开当前聊天的项目讨论串面板。可传入当前聊天的只读配对码。', PANEL),
+    descriptor('open_panel_link', '项目讨论串', '从当前总讨论的回复末尾打开右侧面板。', PANEL),
     descriptor('snapshot', '读取讨论串', '刷新当前绑定的项目讨论串。'),
     descriptor('open_thread', '打开原生聊天', '按用户点击的行打开本项目已登记的本地聊天。'),
 )}
@@ -102,13 +108,19 @@ def call(params):
     if (not args.keys() <= schema['properties'].keys() or not set(schema['required']) <= args.keys()
             or not all(isinstance(value, str) and 0 < len(value) <= 256 for value in args.values())):
         raise ProtocolError(-32602, '无效的工具参数。')
+    if name == 'open_panel_link' and args['url'] != panel_state.PANEL_LINK:
+        raise ProtocolError(-32602, '无法识别这个面板链接。')
     meta = params.get('_meta', {})
     try:
         actor = meta.get('threadId') if isinstance(meta, dict) else None
         if isinstance(meta, dict) and 'threadId' in meta and (not isinstance(actor, str) or not actor):
             raise ValueError('宿主提供的聊天标识无效。')
+        if name == 'open_panel_link' and not actor:
+            raise ValueError('请从项目总讨论的回复末尾打开面板。')
         data = panel_state.snapshot(actor=actor, view_key=args.get('view_key'),
-                                    include_usage=name in ('show_panel', 'snapshot'))
+                                    include_usage=name in ('show_panel', 'open_panel_link', 'snapshot'))
+        if name == 'open_panel_link' and (data.get('role') != 'director' or data.get('director_id') != actor):
+            raise ValueError('请从项目总讨论的回复末尾打开面板。')
         if name == 'open_thread':
             data = open_registered(data, args['thread_id'])
             label = '已请求打开聊天。' if data['opened'] else '桌面端未能打开聊天。'

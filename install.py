@@ -78,8 +78,9 @@ def windows_marketplace():
         config.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
         hooks_file = stage / PLUGIN / "hooks" / "hooks.json"
         hooks = json.loads(hooks_file.read_text(encoding="utf-8"))
-        footer_hook = hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]
-        footer_hook["commandWindows"] = f'"{sys.executable}" -B -X utf8 "%PLUGIN_ROOT%/worker_reply.py"'
+        for event in ("SessionStart", "UserPromptSubmit", "Stop"):
+            hook = hooks["hooks"][event][0]["hooks"][0]
+            hook["commandWindows"] = f'"{sys.executable}" -B -X utf8 "%PLUGIN_ROOT%/worker_reply.py"'
         hooks_file.write_text(json.dumps(hooks, indent=2) + "\n", encoding="utf-8")
 
         if market.exists():
@@ -180,7 +181,9 @@ def main():
     plugins = installed(codex)
     if not plugins[active]["enabled"] or plugins.get(other, {}).get("enabled"):
         raise SystemExit("版本切换未生效，请查看 Codex 插件设置。")
-    print(f"已启用 {active} {plugins[active]['version']}。请在新聊天中启动 Director。")
+    print(f"已启用 {active} {plugins[active]['version']}。已有项目可以继续使用原聊天。")
+    if active == LOCAL:
+        print("升级时若 Codex 正在运行，请在现有任务结束后退出并重新打开，让旧聊天载入新版规则。")
 
 
 if __name__ == "__main__":

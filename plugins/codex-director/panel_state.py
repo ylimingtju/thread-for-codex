@@ -15,6 +15,10 @@ from uuid import UUID
 from panel_usage import usage_for_threads
 
 
+# A desktop link only. No web service or chat ID is needed to open the current panel.
+PANEL_LINK = "https://thread-for-codex.invalid/panel"
+
+
 def home():
     return Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
 
