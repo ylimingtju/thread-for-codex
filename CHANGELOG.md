@@ -1,5 +1,29 @@
 # Thread for Codex · 版本记录 / Release notes
 
+## 1.2.0 · macOS
+
+[下载 macOS v1.2.0 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.0/thread-for-codex-macos.zip) · [Windows 正式版 / Stable v1.0.4](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip) · [Windows 试装版 / Preview v1.1.0](https://github.com/ylimingtju/thread-for-codex/archive/5bd50f46f4fbaa7a3074705416137a978a477939.zip)
+
+### 中文
+
+- **派工后可以接着安排工作。** 总讨论发出任务并登记后默认结束本轮，明确要求等待时才持续跟进。执行串答完后，原串链接显示在聊天中的派工回执里。总讨论正忙时，回执等当前轮结束后更新。总讨论可直接引用已有答案，调查、新判断和文件修改交给执行串。
+- **在原串查看答复。** 总讨论把问题交给执行串后，收到本轮答复时默认只提供执行串名称和链接。明确要求汇总或比较时，总讨论再整理答复。
+- **右侧面板采用透明玻璃分组。** 浅色与深色跟随 Codex 主题。「等你回复」「进行中」「已完成」分别用黄、蓝、绿区分。底部的 Token 用量默认收起，展开可查看各模型的用量和占比。累计范围提示已移除，数字以大写 K 或 M 缩写，最多保留一位小数。
+- **减少重复处理。** 派工记录的读取及来源、目标核对使用同一套逻辑。任务列表不变时沿用原分组，用量可以独立更新。任务组与用量区复用折叠样式。
+
+升级时解压 macOS 安装包并运行 `python3 install.py`。在 Codex「设置 → Hooks」审查并信任插件的三条规则，当前任务结束后重启 Codex。v1.2.0 尚无 Windows 真机验证，Windows 正式版和试装版入口见上方。
+
+### English
+
+- **Keep working after assigning a task.** Once the main chat sends and registers an assignment, it ends the turn by default. Ask it to wait when you need the result before continuing. The assignment receipt shows the worker chat link when the reply is ready and the main chat is idle. The main chat can answer from existing results and delegates investigation, new judgments, and file changes.
+- **Read answers in the original chat.** After delegating a question and receiving the reply, the main chat provides the worker chat’s name and link by default. Ask the main chat to summarize or compare replies when needed.
+- **Transparent task groups in the side panel.** The panel follows the Codex light or dark theme. Yellow, blue, and green distinguish threads waiting for you, in progress, and complete. The token usage row at the bottom starts collapsed. Expand it to see counts and shares by model. The time-range note has been removed, and counts use uppercase K or M with up to one decimal place.
+- **Less repeated work.** The dispatch code shares the logic for reading records and checking their source and target. The panel keeps the current groups when the task list stays the same and updates usage independently. Task groups and the usage row share the same disclosure styles.
+
+To update, extract the macOS ZIP and run `python3 install.py`. Review and trust the plugin's three hooks under Settings → Hooks, then restart Codex after your active tasks finish. Windows testing for v1.2.0 is pending. Use the Windows stable or preview links above.
+
+![浅色和深色面板，使用示例数据 · Light and dark panel with fictional data](docs/images/panel-preview.png)
+
 ## 1.1.1 · macOS
 
 [下载 macOS v1.1.1 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.1/thread-for-codex-macos.zip) · [Windows 正式版 / Stable v1.0.4](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip) · [Windows 试装版 / Preview v1.1.0](https://github.com/ylimingtju/thread-for-codex/archive/5bd50f46f4fbaa7a3074705416137a978a477939.zip)

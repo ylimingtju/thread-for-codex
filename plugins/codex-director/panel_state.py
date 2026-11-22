@@ -17,6 +17,7 @@ from panel_usage import usage_for_threads
 
 # A desktop link only. No web service or chat ID is needed to open the current panel.
 PANEL_LINK = "https://thread-for-codex.invalid/panel"
+DISPATCH_PREFIX = "【Director 派工】"
 
 
 def home():
@@ -178,54 +179,70 @@ def find_worker(db, owner, thread_id, pending_id):
     return row
 
 
-def pending_binding(thread_id):
+def pending_binding(thread_id=None, *, pending_id=None):
     try:
         data = json.loads((home() / ".codex-global-state.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
     matches = set()
-    reverse = "thread-client-id-v1:local%3A" + thread_id
+    prefix = "thread-client-id-v1:local%3A"
     for name, atoms in data.items():
-        if name.startswith("electron-owner-atoms:") and isinstance(atoms, dict):
-            pending = atoms.get(reverse)
-            bindings = atoms.get("client-thread-bindings-v1")
-            if isinstance(pending, str) and isinstance(bindings, dict) and bindings.get(pending) == thread_id:
-                matches.add(pending)
+        if not name.startswith("electron-owner-atoms:") or not isinstance(atoms, dict):
+            continue
+        bindings = atoms.get("client-thread-bindings-v1")
+        if not isinstance(bindings, dict):
+            continue
+        target = thread_id or bindings.get(pending_id)
+        if not isinstance(target, str):
+            continue
+        pending = atoms.get(prefix + target)
+        if isinstance(pending, str) and bindings.get(pending) == target and pending_id in (None, pending):
+            matches.add(pending if thread_id else target)
     return matches.pop() if len(matches) == 1 else None
 
 
-def tool_receipts(db, actor, tool):
+def tool_receipts(db, actor, tool, turn_id=None):
     return db.execute("""SELECT json_extract(item_json,'$.arguments') AS args,
             json_extract(item_json,'$.result.content[0].text') AS content,
             coalesce(started_at_ms,created_at_ms) AS sent_ms FROM thread_items
-        WHERE thread_id=? AND item_type='mcpToolCall'
+        WHERE thread_id=? AND item_type='mcpToolCall' AND (? IS NULL OR turn_id=?)
           AND json_extract(item_json,'$.server')='codex_app'
           AND json_extract(item_json,'$.tool')=?
           AND json_extract(item_json,'$.status')='completed'
           AND json_extract(item_json,'$.error') IS NULL
           AND coalesce(json_extract(item_json,'$.result.isError'),0)=0
           AND json_extract(item_json,'$.result.content[0].type')='text'
-        ORDER BY rollout_ordinal DESC""", (actor, tool))
+        ORDER BY rollout_ordinal DESC""", (actor, turn_id, turn_id, tool))
+
+
+def dispatch_receipts(db, actor, tool, turn_id=None):
+    for arguments, content, sent_ms in tool_receipts(db, actor, tool, turn_id):
+        try:
+            args, result = json.loads(arguments), json.loads(content)
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(args, dict) or not isinstance(result, dict) or not isinstance(sent_ms, int):
+            continue
+        if not isinstance(args.get("prompt"), str) or result.get("hostId", "local") != "local":
+            continue
+        if tool == "send_message_to_thread" and (args.get("threadId") != result.get("threadId")
+                                                 or args.get("hostId", "local") != "local"):
+            continue
+        yield args, result, sent_ms
 
 
 def forward_receipts(actor):
-    prefix = "【Director 派工】"
     with readonly(home() / "thread_history_1.sqlite") as db:
-        for args, content, sent_ms in tool_receipts(db, actor, "send_message_to_thread"):
+        for args, result, sent_ms in dispatch_receipts(db, actor, "send_message_to_thread"):
             try:
-                args, result = json.loads(args), json.loads(content)
-                if not isinstance(args, dict) or not isinstance(result, dict):
-                    continue
-                thread = uuid_text(args.get("threadId"))
-                if (thread == actor or result.get("threadId") != thread
-                        or args.get("hostId", "local") != "local" or result.get("hostId", "local") != "local"
-                        or not isinstance(sent_ms, int) or sent_ms <= 0):
-                    continue
-                first_line = args["prompt"].partition("\n")[0]
-                subject = first_line[len(prefix):].strip()[:240] if first_line.startswith(prefix) else ""
-                yield thread, sent_ms / 1000, subject
-            except (TypeError, ValueError, KeyError, AttributeError):
+                thread = uuid_text(result.get("threadId"))
+            except ValueError:
                 continue
+            if thread == actor or sent_ms <= 0:
+                continue
+            first_line = args["prompt"].partition("\n")[0]
+            subject = first_line[len(DISPATCH_PREFIX):].strip()[:240] if first_line.startswith(DISPATCH_PREFIX) else ""
+            yield thread, sent_ms / 1000, subject
 
 
 def latest_forwards(actor, target=None):
@@ -379,8 +396,7 @@ def observed(row, turn, native):
     # The previous turn can still be the newest one while the forwarded prompt is queued.
     if row["turn_id"] is None and turn["started_at"] < int(updated):
         return status, summary, updated
-    new_turn = (row["turn_id"] != turn["turn_id"]
-                and (row["turn_id"] is not None or turn["started_at"] >= int(updated)))
+    new_turn = row["turn_id"] != turn["turn_id"]
     if not new_turn and status != "running":
         return status, summary, updated
     if turn["status"] == "inProgress" and new_turn:

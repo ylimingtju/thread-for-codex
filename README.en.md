@@ -5,15 +5,15 @@
 
 [中文](README.md) · English
 
-**[Download for macOS · v1.1.1 (ZIP)](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.1/thread-for-codex-macos.zip)** · **[Windows stable · v1.0.4 (ZIP)](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)** · **[Windows preview · v1.1.0 (ZIP)](https://github.com/ylimingtju/thread-for-codex/archive/5bd50f46f4fbaa7a3074705416137a978a477939.zip)** · [Installation instructions](#install-and-start)
+**[Download for macOS · v1.2.0 (ZIP)](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.0/thread-for-codex-macos.zip)** · **[Windows stable · v1.0.4 (ZIP)](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)** · **[Windows preview · v1.1.0 (ZIP)](https://github.com/ylimingtju/thread-for-codex/archive/5bd50f46f4fbaa7a3074705416137a978a477939.zip)** · [Installation instructions](#install-and-start)
 
 The Windows preview uses commit `5bd50f4`, which momo-land tested on Windows 11. Fresh installation, reinstallation, and an upgrade from v1.0.4 all passed. The upgrade kept existing thread registrations. The Codex service read the panel resources and supplied return links to registered workers. A signed-in desktop check is still pending for assigning a task, opening its worker chat, and following the link back. [Windows test results](https://github.com/ylimingtju/thread-for-codex/pull/3) · [Desktop verification](https://github.com/ylimingtju/thread-for-codex/issues/2)
 
-[v1.1.1 release notes](CHANGELOG.md) · [v1.1.0 guide, benchmark posters and FAQ](docs/release-v1.1.0.md#en)
+[v1.2 release notes](https://github.com/ylimingtju/thread-for-codex/releases/tag/v1.2.0) · [v1.1.0 guide, benchmark posters and FAQ](docs/release-v1.1.0.md#en)
 
-![Three colored threads extend from a single reel](docs/images/threads-cover.jpg)
+![Thread for Codex — One project chat. Parallel threads.](docs/images/github-cover.jpg)
 
-Thread for Codex adds a project thread panel to Codex for macOS and Windows. For a city walking guide, you could keep editorial decisions in the main chat, ask one thread to plan the route, and ask another to check the map. When the route planner needs you to choose between the riverfront and the old town, its question appears in the sidebar. Open the thread to answer, then return to the main chat for the summary.
+Thread for Codex adds a project thread panel to Codex for macOS and Windows. For a city walking guide, you could keep editorial decisions in the main chat, ask one thread to plan the route, and ask another to check the map. When the route planner needs you to choose between the riverfront and the old town, its question appears in the sidebar. Open that thread to answer.
 
 ![The light panel shows a question and work in progress. The dark panel shows token counts by model.](docs/images/panel-preview.png)
 
@@ -23,7 +23,7 @@ Thread for Codex adds a project thread panel to Codex for macOS and Windows. For
 
 You need a signed-in Codex desktop app, a Codex CLI that supports `codex plugin`, and Python 3.9 or later. The plugin uses only the Python standard library.
 
-1. Download the ZIP for your system above and extract it. If you use Git, check out `v1.1.1` for stable macOS, `v1.0.4` for stable Windows, or the tested commit `5bd50f4` for the Windows v1.1.0 preview. On macOS, choose a folder you plan to keep. Run the command for your system from the source folder.
+1. Download the ZIP for your system above and extract it. If you use Git, check out `v1.2.0` for macOS, `v1.0.4` for stable Windows, or the tested commit `5bd50f4` for the Windows v1.1.0 preview. On macOS, choose a folder you plan to keep. Run the command for your system from the source folder.
 
    | System | Install command |
    | --- | --- |
@@ -38,13 +38,13 @@ You need a signed-in Codex desktop app, a Codex CLI that supports `codex plugin`
    Use this chat as the main discussion for this project.
    ```
 
-3. Give it a task. For example, “Ask the route planner for two weekend routes and the map thread to check the stops.” On first launch, the plugin pins the main chat and opens the project panel. On macOS v1.1.1, select **打开项目讨论串** (Open project threads) at the end of a new main-chat reply to reopen the panel. Codex may ask which plugin to use the first time. In a worker reply, select **← 返回总讨论** (Back to main chat) to return.
+3. Give it a task. For example, “Ask the route planner for two weekend routes and the map thread to check the stops.” On first launch, the plugin pins the main chat and opens the project panel. On macOS v1.2.0, select **打开项目讨论串** (Open project threads) at the end of a new main-chat reply to reopen the panel. Codex may ask which plugin to use the first time. In a worker reply, select **← 返回总讨论** (Back to main chat) to return.
 
-Ask “Which route did the planner recommend?” and the main chat summarizes the existing answer. Say “It's going to rain. Please pick a different route,” and it sends the request back to the route planner, then summarizes the new choice. Open that thread for the full answer or to follow up.
+Ask “Which route did the planner recommend?” and the main chat summarizes the existing answer. On macOS v1.2.0, “It's going to rain. Please pick a different route” goes back to the planner. You can give the main chat another task immediately. Once the planner replies and the main chat is idle, the dispatch receipt in the conversation displays a link to the planner. Ask the main chat to wait, summarize, or compare replies when you need it to.
 
 A new main chat defaults to `xhigh` reasoning if the model supports it and you have not selected an effort. An existing chat keeps its current setting. You can change the effort at any time and still assign work, follow up, and accept results.
 
-To update, download the release for your system above, extract it, and rerun the install command. If you use Git, run `git fetch --tags` and check out the tag released for your system before installing. After installing macOS v1.1.1, review and trust the three plugin hooks under Settings → Hooks, then quit and reopen Codex when your active tasks finish. You can follow up in existing worker chats. The Windows installer prepares a local marketplace in the Codex data directory and records the Python executable used for installation. If you move or replace Python, rerun the installer with its new path.
+To update, download the release for your system above, extract it, and rerun the install command. If you use Git, run `git fetch --tags` and check out the tag released for your system before installing. After installing macOS v1.2.0, review and trust the three plugin hooks under Settings → Hooks, then quit and reopen Codex when your active tasks finish. You can follow up in existing worker chats. The Windows installer prepares a local marketplace in the Codex data directory and records the Python executable used for installation. If you move or replace Python, rerun the installer with its new path.
 
 ## Using the sidebar
 

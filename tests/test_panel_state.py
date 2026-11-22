@@ -13,6 +13,7 @@ from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "plugins" / "codex-director"))
 import panel_state as state
+import panel_server
 
 
 def create_indexes(directory, threads):
@@ -46,6 +47,57 @@ class PanelLifecycle(unittest.TestCase):
                     self.assertEqual(context.splitlines()[-1], footer)
                 else:
                     self.assertEqual(output, "")
+
+    def test_inline_receipt_waits_for_idle_and_matches_the_original_dispatch(self):
+        owner, worker, dispatch, followup, response = [str(uuid4()) for _ in range(5)]
+        prompt = "【Director 派工】核对修改稿"
+        envelope = f"<codex_delegation>\n  <source_thread_id>{owner}</source_thread_id>\n  <input>{prompt}</input>\n</codex_delegation>"
+        with tempfile.TemporaryDirectory() as directory, patch.dict(environ, CODEX_HOME=directory):
+            create_indexes(directory, [(owner, "user", "总讨论"), (worker, "agent_created_thread", "审核串")])
+            with state.write_registry() as db:
+                db.execute("INSERT INTO directors VALUES(?, '总讨论', 'main')", (owner,))
+                db.execute("INSERT INTO workers VALUES(?,?,NULL,'worker','审核串','running','',0,NULL)", (owner, worker))
+            with closing(sqlite3.connect(Path(directory) / "thread_history_1.sqlite")) as db:
+                def turn(thread, turn_id, status, started, ended, final=None):
+                    db.execute("INSERT INTO thread_turns VALUES(?,?,?,?,?,?,?)",
+                               (thread, turn_id, status, started, ended, started, final))
+
+                def item(thread, turn_id, item_id, kind, fields, ms):
+                    db.execute("INSERT INTO thread_items VALUES(?,?,?,?,?,?,?,?,?)",
+                               (thread, turn_id, item_id, kind, json.dumps(fields), ms, ms, ms, ms))
+
+                turn(owner, dispatch, "inProgress", 3, None)
+                item(owner, dispatch, "sent", "mcpToolCall", {
+                    "server": "codex_app", "tool": "send_message_to_thread", "status": "completed",
+                    "arguments": json.dumps({"threadId": worker, "prompt": prompt}),
+                    "result": {"content": [{"type": "text", "text": json.dumps({"threadId": worker})}]}
+                }, 3001)
+                turn(worker, "old", "completed", 1, 2, "old-final")
+                item(worker, "old", "old-final", "agentMessage", {"phase": "final_answer", "text": "旧答案"}, 2000)
+                db.commit()
+                show = {"name": "show_receipt", "arguments": {"view_key": "main"}, "_meta": {"threadId": owner}}
+                seed = panel_server.call(show)["structuredContent"]
+                self.assertEqual(seed["receipt_turn"], dispatch)
+                read = {**show, "name": "snapshot", "arguments": {"view_key": "main", "receipt_turn": dispatch}}
+                self.assertTrue(panel_server.call({**read, "_meta": {"threadId": worker}})["isError"])
+                def status():
+                    return panel_server.call(read)["structuredContent"]["threads"][0]["status"]
+                self.assertEqual(status(), "running")
+                turn(worker, response, "completed", 4, 6, "answer")
+                item(worker, response, "incoming", "functionCallOutput", {
+                    "namespace": "codex_app", "name": "send_message_to_thread", "output": envelope}, 4000)
+                item(worker, response, "answer", "agentMessage", {"phase": "final_answer", "text": "本轮答复"}, 6000)
+                db.execute("UPDATE thread_turns SET status='completed',completed_at=4 WHERE turn_id=?", (dispatch,))
+                turn(owner, followup, "inProgress", 5, None)
+                turn(worker, str(uuid4()), "inProgress", 7, None)
+                db.commit()
+                self.assertEqual(status(), "running")
+                db.execute("UPDATE thread_turns SET status='completed',completed_at=8 WHERE turn_id=?", (followup,))
+                db.commit()
+                final = panel_server.call(read)["structuredContent"]
+                self.assertTrue(final["finished"])
+                self.assertEqual((final["threads"][0]["thread_id"], final["threads"][0]["status"]), (worker, "review"))
+                self.assertEqual(panel_server.call(read)["structuredContent"], final)
 
     def test_utf8_payload_over_stdin(self):
         root = str(uuid4())

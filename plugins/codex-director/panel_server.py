@@ -7,6 +7,7 @@ import subprocess
 import sys
 from uuid import UUID
 
+import panel_receipts
 import panel_state
 
 ROOT = Path(__file__).resolve().parent
@@ -14,8 +15,9 @@ VERSION = json.loads((ROOT / '.codex-plugin/plugin.json').read_text(encoding='ut
 MIME = 'text/html;profile=mcp-app'
 ENTRY = 'ui://director-panel/entry.html'
 PANEL = 'ui://director-panel/threads.html'
+RECEIPT = 'ui://director-panel/receipt.html'
 PROTOCOLS = ('2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05')
-RESOURCES = {ENTRY: '项目讨论串入口', PANEL: '项目讨论串'}
+RESOURCES = {ENTRY: '项目讨论串入口', PANEL: '项目讨论串', RECEIPT: '派工回执'}
 
 
 def descriptor(name, title, description, resource=None):
@@ -33,6 +35,8 @@ def descriptor(name, title, description, resource=None):
             required = ['url']
             meta['ui']['visibility'] = ['app']
             meta['openai/ui']['entrypoints'] = [{'type': 'deepLink', 'patterns': [panel_state.PANEL_LINK]}]
+    if name == 'snapshot':
+        fields['receipt_turn'] = {'type': 'string', 'format': 'uuid'}
     if name == 'open_thread':
         fields['thread_id'] = {'type': 'string', 'format': 'uuid'}
         required.append('thread_id')
@@ -46,6 +50,7 @@ def descriptor(name, title, description, resource=None):
 
 TOOLS = {tool['name']: tool for tool in (
     descriptor('show_entry', '项目讨论串入口', '在总讨论显示面板入口，在执行串显示返回总讨论的入口。传入当前聊天的只读配对码。', ENTRY),
+    descriptor('show_receipt', '派工回执', '登记本轮全部派工后，在总讨论正文显示自动更新的回执。传入本总讨论的只读配对码。', RECEIPT),
     descriptor('show_panel', '项目讨论串', '打开当前聊天的项目讨论串面板。可传入当前聊天的只读配对码。', PANEL),
     descriptor('open_panel_link', '项目讨论串', '从当前总讨论的回复末尾打开右侧面板。', PANEL),
     descriptor('snapshot', '读取讨论串', '刷新当前绑定的项目讨论串。'),
@@ -62,15 +67,16 @@ class ProtocolError(Exception):
 def resource_content(uri):
     if uri not in RESOURCES:
         raise ProtocolError(-32002, '没有这个面板资源。')
-    entry = uri == ENTRY
-    modes = ['inline', 'fullscreen'] if entry else ['fullscreen']
+    inline = uri != PANEL
+    modes = {ENTRY: ['inline', 'fullscreen'], RECEIPT: ['inline'], PANEL: ['fullscreen']}[uri]
     meta = {'ui': {'prefersBorder': False, 'csp': {'connectDomains': [], 'resourceDomains': []}},
             'openai/ui': {'availableDisplayModes': modes, 'preferredDisplayMode': modes[0]}}
-    if entry:
+    if inline:
         meta.update({'openai/widgetShowCodexWidgetInline': True, 'openai/widgetHideAttribution': True,
                      'openai/widgetHeightHint': 49, 'openai/widgetMinFrameHeight': 0})
     page = (ROOT / 'assets/threads.html').read_text(encoding='utf-8')
-    page = page.replace('__DIRECTOR_VIEW__', 'entry' if entry else 'panel').replace('__DIRECTOR_VERSION__', VERSION)
+    view = {PANEL: 'panel', ENTRY: 'entry', RECEIPT: 'receipt'}[uri]
+    page = page.replace('__DIRECTOR_VIEW__', view).replace('__DIRECTOR_VERSION__', VERSION)
     return {'uri': uri, 'mimeType': MIME, 'text': page, '_meta': meta}
 
 
@@ -117,6 +123,9 @@ def call(params):
             raise ValueError('宿主提供的聊天标识无效。')
         if name == 'open_panel_link' and not actor:
             raise ValueError('请从项目总讨论的回复末尾打开面板。')
+        if name == 'show_receipt' or 'receipt_turn' in args:
+            data = panel_receipts.receipt(actor, args.get('view_key'), args.get('receipt_turn'))
+            return {'content': [{'type': 'text', 'text': '派工回执'}], 'structuredContent': data}
         data = panel_state.snapshot(actor=actor, view_key=args.get('view_key'),
                                     include_usage=name in ('show_panel', 'open_panel_link', 'snapshot'))
         if name == 'open_panel_link' and (data.get('role') != 'director' or data.get('director_id') != actor):

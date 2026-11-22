@@ -75,9 +75,15 @@ def hook_result(event):
             '在正文后空一行，再原样附上下列链接一次。不要只发链接，不要重做任务或调用任何工具。'
             '如果看不到完整原文，请保留此前的交付，不要凭记忆重写。\n' + footer
         )}
+    role_hint = (
+        '本串是已登记的总讨论，负责选串、派工和确认交付。能直接引用已有答案时可直接答。'
+        '需要调查、计算、实质判断、审查或修改文件时，交给执行串。派工失败时说明原因。'
+        '确认送达并登记后，用本总讨论的 view_key 调用一次 director-panel.show_receipt，结束本轮。仅在用户明确要求等结果时持续等待。\n'
+        if row['id'] == actor else ''
+    )
     return {'hookSpecificOutput': {
         'hookEventName': name,
-        'additionalContext': '本串面向用户的回复（包括提问和直接追问的答复）以空行和以下独立一行结束，'
+        'additionalContext': role_hint + '本串面向用户的回复（包括提问和直接追问的答复）以空行和以下独立一行结束，'
                              '链接只写一次。中途进展无需附链接。\n' + footer,
     }}
 
