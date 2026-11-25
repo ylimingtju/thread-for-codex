@@ -1,5 +1,19 @@
 # Thread for Codex · 版本记录 / Release notes
 
+## 1.2.1 · macOS
+
+[macOS v1.2.1（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-macos.zip) · [Windows v1.0.4（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)
+
+### 中文
+
+- **首次设置总讨论时自动命名。** 新聊天的标题为空、是默认占位名或仅复述启动语时，用「项目名 Director」。无法确认项目名时用「项目总讨论」。用户指定的标题优先，已有自定义标题保留，重复启用沿用现名。
+- 中英文首页分别标明 macOS 和 Windows 可下载的版本，并在封面下方加入项目介绍视频。
+
+### English
+
+- **Name a main chat on first setup.** If the new chat has no title, has a default title, or just repeats the setup request, the plugin uses “Project Name Director.” If it cannot identify the project, it uses “项目总讨论” (Project main chat). A title you specify takes priority. Existing custom titles are kept, and repeated setup keeps the current title.
+- Both READMEs list one downloadable version per platform and show the project introduction video beneath the cover.
+
 ## 1.2.0 · macOS
 
 [下载 macOS v1.2.0 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.0/thread-for-codex-macos.zip) · [Windows 正式版 / Stable v1.0.4](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip) · [Windows 试装版 / Preview v1.1.0](https://github.com/ylimingtju/thread-for-codex/archive/5bd50f46f4fbaa7a3074705416137a978a477939.zip)

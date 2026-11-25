@@ -36,7 +36,7 @@ $title | & $python -B -X utf8 $state init --stdin
 
 ## Director
 
-1. **初始化。** 推荐每个项目使用一个总讨论，其余聊天作为执行串。用当前聊天名运行 `init`，用返回的本串 `view_key` 调用 `director-panel.show_panel`。已初始化的总讨论沿用原配对。平时只需在每条面向用户的最终答复末尾单列一次 `[打开项目讨论串](https://thread-for-codex.invalid/panel)`，派工时另显示本轮回执。用户明确要求立即打开面板时，可直接调用 `show_panel`。
+1. **初始化。** 推荐每个项目使用一个总讨论，其余聊天作为执行串。先运行 `show`。本串首次登记时按[首次命名规则](runtime-adapters.md#首次命名)确定原生聊天标题，用该标题运行 `init`，再用返回的本串 `view_key` 调用 `director-panel.show_panel`。已初始化的总讨论沿用原配对和名称。平时只需在每条面向用户的最终答复末尾单列一次 `[打开项目讨论串](https://thread-for-codex.invalid/panel)`，派工时另显示本轮回执。用户明确要求立即打开面板时，可直接调用 `show_panel`。
 2. **派工消息。** 新串首派和旧串续派均附当前总讨论的真实链接，约定执行串每次面向用户的答复都以它收尾。旧串续派的第一行写 `【Director 派工】<简短任务标题>`。进度询问、结果回报不带派工标记。首次向某个串派工时提供本文件的实际完整路径，指明 Worker 小节。
 3. **登记。** 仅在确认本总讨论的本次本地创建或派工成功且目标 ID 匹配后运行 `track`，传 `title`、`summary` 和回执的正式 `thread_id`。只有 `clientThreadId` 时先传 `pending_id`，取得可信绑定后在同一次 `track` 里传原 `pending_id` 和正式 `thread_id`，使原记录可点击。准备中只能标为 `preparing` 或 `blocked`。登记失败只重试登记，创建或发送结果不明时不自动重发。面板可从本总讨论带标记的成功回执补登记；显式接入早期无标记派工时必须核对原派工的目标及成功回执。用户改名后仍按原 ID 关联。
 4. **状态。** 总讨论用 `update` 传已登记的 `thread_id`（准备中用 `pending_id`）、`status` 和 `summary`。已发送可写 `running`，摘要只写已知进展。技术阻碍写 `blocked`，确需用户决定时写 `waiting` 并附具体问题。执行串交付写 `review`；总讨论确认匹配最新派工或追问、符合交付要求后才写 `completed`。返工、已完成后继续追问都在原串进入 `running`。用户明确要求归档时，对指定正式 ID 执行原生归档；成功后可用 `archived` 同步。正常交付、停滞或取消都保留聊天。
