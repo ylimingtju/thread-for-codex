@@ -1,3 +1,5 @@
+
+
 # Thread for Codex
 
 **受 Claude Projects 启发，Thread for Codex 让你在项目总讨论里分派任务，点开对应讨论串就能继续追问。**  
@@ -12,6 +14,10 @@ Windows 试装版使用 momo-land 在 Windows 11 上测试的提交 `5bd50f4`。
 [v1.2 更新说明](https://github.com/ylimingtju/thread-for-codex/releases/tag/v1.2.0) · [v1.1.0 使用指南、实测海报与常见问题](docs/release-v1.1.0.md#zh)
 
 ![Thread for Codex：主线统筹，分线追问](docs/images/github-cover.jpg)
+
+**项目介绍视频（8 秒）**
+
+https://github.com/user-attachments/assets/1d1d60cf-e0bc-42ef-a01a-5aa561a90f22
 
 Thread for Codex 是适用于 macOS 和 Windows 的 Codex 项目讨论串插件。比如做一份城市步行指南，可以在总讨论里定方向，让一个串规划路线、另一个串核对地图。路线串需要你选河畔还是老城时，问题会直接出现在右侧。点标题即可在原串答复。
 
