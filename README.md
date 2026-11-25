@@ -8,7 +8,7 @@ Inspired by Claude Projects, Thread for Codex lets you delegate tasks from one p
 | 系统 | 可下载版本 | 安装包 |
 | --- | --- | --- |
 | macOS | **v1.2.1** | [下载 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-macos.zip) |
-| Windows | **v1.0.4** | [下载 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip) |
+| Windows | **v1.1.0** | [下载 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip) |
 
 [安装说明](#安装与启动) · [v1.2.1 更新说明](https://github.com/ylimingtju/thread-for-codex/releases/tag/v1.2.1) · [早期版本实测与常见问题](docs/release-v1.1.0.md#zh)
 
@@ -28,7 +28,7 @@ Thread for Codex 是适用于 macOS 和 Windows 的 Codex 项目讨论串插件�
 
 需要已登录的 Codex 桌面端、支持 `codex plugin` 的 Codex 命令行，以及 Python 3.9 或以上。Python 部分只使用标准库。
 
-1. 从上方下载对应系统的 ZIP 并解压。使用 Git 安装时，macOS 检出标签 `v1.2.1`，Windows 检出 `v1.0.4`。在源码根目录运行对应命令。macOS 用户请选一个准备长期保留的目录。
+1. 从上方下载对应系统的 ZIP 并解压。macOS 也可用 Git 检出标签 `v1.2.1`。Windows ZIP 使用经过 Windows 11 测试的提交 `5bd50f4`。在源码根目录运行对应命令。macOS 用户请选一个准备长期保留的目录。
 
    | 系统 | 安装命令 |
    | --- | --- |
@@ -51,7 +51,7 @@ Thread for Codex 是适用于 macOS 和 Windows 的 Codex 项目讨论串插件�
 
 新建总讨论时，如果你没有选择推理强度，插件默认使用 `xhigh`（模型支持时）。已有聊天沿用当前设置。你可以随时调整强度，各档都能正常派工、追问和验收。
 
-升级时，从上方下载本系统的安装包，解压后在源码根目录重新运行安装命令。Git 用户可用 `git fetch --tags` 获取标签，再检出下载表中的对应版本。macOS v1.2.1 安装后，请在 Codex「设置 → Hooks」审查并信任插件的三条规则，然后在当前任务结束后退出并重新打开 Codex。已有执行串可以直接追问。Windows 安装器会在 Codex 数据目录下生成本机插件源，并记录安装所用的 Python 路径。移动或更换 Python 后，用新路径重新运行安装程序。
+升级时，从上方下载本系统的安装包，解压后在源码根目录重新运行安装命令。macOS Git 用户可用 `git fetch --tags` 获取标签，再检出下载表中的 macOS 版本。macOS v1.2.1 安装后，请在 Codex「设置 → Hooks」审查并信任插件的三条规则，然后在当前任务结束后退出并重新打开 Codex。已有执行串可以直接追问。Windows 安装器会在 Codex 数据目录下生成本机插件源，并记录安装所用的 Python 路径。移动或更换 Python 后，用新路径重新运行安装程序。
 
 ## 在侧栏里能做什么
 

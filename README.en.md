@@ -8,7 +8,7 @@
 | Platform | Available version | Installer |
 | --- | --- | --- |
 | macOS | **v1.2.1** | [Download ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-macos.zip) |
-| Windows | **v1.0.4** | [Download ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip) |
+| Windows | **v1.1.0** | [Download ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip) |
 
 [Installation instructions](#install-and-start) · [v1.2.1 release notes](https://github.com/ylimingtju/thread-for-codex/releases/tag/v1.2.1) · [Earlier benchmarks and FAQ](docs/release-v1.1.0.md#en)
 
@@ -28,7 +28,7 @@ Thread for Codex adds a project thread panel to Codex for macOS and Windows. For
 
 You need a signed-in Codex desktop app, a Codex CLI that supports `codex plugin`, and Python 3.9 or later. The plugin uses only the Python standard library.
 
-1. Download the ZIP for your system above and extract it. If you use Git, check out `v1.2.1` for macOS or `v1.0.4` for Windows. On macOS, choose a folder you plan to keep. Run the command for your system from the source folder.
+1. Download the ZIP for your system above and extract it. On macOS, you can also check out the `v1.2.1` tag with Git. The Windows ZIP uses commit `5bd50f4`, tested on Windows 11. On macOS, choose a folder you plan to keep. Run the command for your system from the source folder.
 
    | System | Install command |
    | --- | --- |
@@ -51,7 +51,7 @@ Ask “Which route did the planner recommend?” and the main chat summarizes th
 
 A new main chat defaults to `xhigh` reasoning if the model supports it and you have not selected an effort. An existing chat keeps its current setting. You can change the effort at any time and still assign work, follow up, and accept results.
 
-To update, download the ZIP for your system above, extract it, and rerun the install command. If you use Git, run `git fetch --tags` and check out the version listed for your system. After installing macOS v1.2.1, review and trust the three plugin hooks under Settings → Hooks, then quit and reopen Codex when your active tasks finish. You can follow up in existing worker chats. The Windows installer prepares a local marketplace in the Codex data directory and records the Python executable used for installation. If you move or replace Python, rerun the installer with its new path.
+To update, download the ZIP for your system above, extract it, and rerun the install command. On macOS, Git users can run `git fetch --tags` and check out the macOS version listed above. After installing macOS v1.2.1, review and trust the three plugin hooks under Settings → Hooks, then quit and reopen Codex when your active tasks finish. You can follow up in existing worker chats. The Windows installer prepares a local marketplace in the Codex data directory and records the Python executable used for installation. If you move or replace Python, rerun the installer with its new path.
 
 ## Using the sidebar
 

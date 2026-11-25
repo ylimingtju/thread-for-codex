@@ -2,7 +2,7 @@
 
 ## 1.2.1 · macOS
 
-[macOS v1.2.1（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-macos.zip) · [Windows v1.0.4（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)
+[macOS v1.2.1（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-macos.zip) · [Windows v1.1.0（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip)
 
 ### 中文
 
@@ -16,7 +16,7 @@
 
 ## 1.2.0 · macOS
 
-[下载 macOS v1.2.0 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.0/thread-for-codex-macos.zip) · [Windows 正式版 / Stable v1.0.4](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip) · [Windows 试装版 / Preview v1.1.0](https://github.com/ylimingtju/thread-for-codex/archive/5bd50f46f4fbaa7a3074705416137a978a477939.zip)
+[下载 macOS v1.2.0 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.0/thread-for-codex-macos.zip)
 
 ### 中文
 
@@ -25,7 +25,7 @@
 - **右侧面板采用透明玻璃分组。** 浅色与深色跟随 Codex 主题。「等你回复」「进行中」「已完成」分别用黄、蓝、绿区分。底部的 Token 用量默认收起，展开可查看各模型的用量和占比。累计范围提示已移除，数字以大写 K 或 M 缩写，最多保留一位小数。
 - **减少重复处理。** 派工记录的读取及来源、目标核对使用同一套逻辑。任务列表不变时沿用原分组，用量可以独立更新。任务组与用量区复用折叠样式。
 
-升级时解压 macOS 安装包并运行 `python3 install.py`。在 Codex「设置 → Hooks」审查并信任插件的三条规则，当前任务结束后重启 Codex。v1.2.0 尚无 Windows 真机验证，Windows 正式版和试装版入口见上方。
+升级时解压 macOS 安装包并运行 `python3 install.py`。在 Codex「设置 → Hooks」审查并信任插件的三条规则，当前任务结束后重启 Codex。
 
 ### English
 
@@ -34,13 +34,13 @@
 - **Transparent task groups in the side panel.** The panel follows the Codex light or dark theme. Yellow, blue, and green distinguish threads waiting for you, in progress, and complete. The token usage row at the bottom starts collapsed. Expand it to see counts and shares by model. The time-range note has been removed, and counts use uppercase K or M with up to one decimal place.
 - **Less repeated work.** The dispatch code shares the logic for reading records and checking their source and target. The panel keeps the current groups when the task list stays the same and updates usage independently. Task groups and the usage row share the same disclosure styles.
 
-To update, extract the macOS ZIP and run `python3 install.py`. Review and trust the plugin's three hooks under Settings → Hooks, then restart Codex after your active tasks finish. Windows testing for v1.2.0 is pending. Use the Windows stable or preview links above.
+To update, extract the macOS ZIP and run `python3 install.py`. Review and trust the plugin's three hooks under Settings → Hooks, then restart Codex after your active tasks finish.
 
 ![浅色和深色面板，使用示例数据 · Light and dark panel with fictional data](docs/images/panel-preview.png)
 
 ## 1.1.1 · macOS
 
-[下载 macOS v1.1.1 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.1/thread-for-codex-macos.zip) · [Windows 正式版 / Stable v1.0.4](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip) · [Windows 试装版 / Preview v1.1.0](https://github.com/ylimingtju/thread-for-codex/archive/5bd50f46f4fbaa7a3074705416137a978a477939.zip)
+[下载 macOS v1.1.1 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.1/thread-for-codex-macos.zip)
 
 ### 中文
 
@@ -51,8 +51,6 @@ To update, extract the macOS ZIP and run `python3 install.py`. Review and trust 
 
 升级后，在「设置 → Hooks」审查并信任本插件的 `SessionStart`、`UserPromptSubmit` 和 `Stop`。当前任务结束后，退出并重新打开 Codex，让已有聊天载入更新。[Codex Hooks 说明](https://learn.chatgpt.com/docs/hooks#stop)
 
-momo-land 已在 Windows 11 上验证 v1.1.0 试装版的安装、升级、面板资源和执行串返回链接。Windows 正式版为 v1.0.4，v1.1.0 尚待登录桌面的人工点按验收。[测试记录](https://github.com/ylimingtju/thread-for-codex/pull/3) · [验收进度](https://github.com/ylimingtju/thread-for-codex/issues/2)
-
 ### English
 
 - **Open the panel from a new reply.** Each new main-chat reply ends with **打开项目讨论串** (Open project threads). Select it to see that chat’s tasks on the right in a Codex desktop version that supports plugin links. Codex may ask which plugin to use on first click.
@@ -62,15 +60,13 @@ momo-land 已在 Windows 11 上验证 v1.1.0 试装版的安装、升级、面�
 
 After upgrading, review and trust the plugin’s `SessionStart`, `UserPromptSubmit`, and `Stop` hooks under Settings → Hooks. When your active tasks finish, quit and reopen Codex to load the update in existing chats. [Codex hook reference](https://learn.chatgpt.com/docs/hooks#stop)
 
-momo-land tested the v1.1.0 preview on Windows 11, including installation, upgrade, panel resource access, and worker return links. Windows v1.0.4 remains the stable release pending a signed-in desktop check. [Test results](https://github.com/ylimingtju/thread-for-codex/pull/3) · [Verification status](https://github.com/ylimingtju/thread-for-codex/issues/2)
+## 1.1.0 · macOS / Windows
 
-## 1.1.0 · macOS
+[下载 macOS v1.1.0 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-macos.zip) · [下载 Windows v1.1.0 / Download for Windows](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip)
 
-[下载 macOS v1.1.0 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-macos.zip) · [下载 Windows v1.0.4 / Download for Windows](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)
+Windows 安装包来自提交 `5bd50f4`。安装、升级和返回链接已有 Windows 11 测试记录，登录桌面后的人工点按仍待确认。[更新说明、测试记录与使用指南](docs/release-v1.1.0.md#zh)
 
-Windows 当前发行版为 v1.0.4。momo-land 完成真机确认后再发布 Windows v1.1.0。 [更新说明、macOS 实测与使用指南](docs/release-v1.1.0.md#zh)
-
-Windows stays on v1.0.4 until momo-land confirms v1.1.0 on a Windows machine. [Release notes, macOS benchmarks and user guide](docs/release-v1.1.0.md#en)
+The Windows ZIP uses commit `5bd50f4`. Installation, upgrades, and worker return links were tested on Windows 11. A click-through in the signed-in desktop app is pending. [Release notes, test results, and user guide](docs/release-v1.1.0.md#en)
 
 总讨论直接回答有明确出处的已有结论，把需要新判断或修改的工作分派给执行串。续派时沿用原串上下文，回报时概括本轮结果并保留原串入口。九个专项技能仍可按需调用，普通派工省去流程声明和重复记录。新旧执行串在每条面向用户的答复末尾提供「← 返回总讨论」链接。
 
