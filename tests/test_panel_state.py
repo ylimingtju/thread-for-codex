@@ -14,6 +14,7 @@ from uuid import uuid4
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "plugins" / "codex-director"))
 import panel_state as state
 import panel_server
+import panel_onboarding
 
 
 def create_indexes(directory, threads):
@@ -98,6 +99,162 @@ class PanelLifecycle(unittest.TestCase):
                 self.assertTrue(final["finished"])
                 self.assertEqual((final["threads"][0]["thread_id"], final["threads"][0]["status"]), (worker, "review"))
                 self.assertEqual(panel_server.call(read)["structuredContent"], final)
+
+    def test_queued_task_matches_only_its_new_worker_turn(self):
+        owner, worker, dispatch, old, new = [str(uuid4()) for _ in range(5)]
+        prompt = "【Director 派工】独立任务 B"
+        with tempfile.TemporaryDirectory() as directory, patch.dict(environ, CODEX_HOME=directory):
+            create_indexes(directory, [(owner, "user", "总讨论"), (worker, "user", "执行串")])
+            with state.write_registry() as registry:
+                registry.execute("INSERT INTO directors VALUES(?, '总讨论', 'main')", (owner,))
+                registry.execute("INSERT INTO workers VALUES(?,?,NULL,'worker','执行串','running','A',0,?)", (owner, worker, old))
+            with closing(sqlite3.connect(Path(directory) / "thread_history_1.sqlite")) as db:
+                db.execute("INSERT INTO thread_turns VALUES(?,?,'inProgress',1,NULL,1,NULL)", (owner, dispatch))
+                db.execute("INSERT INTO thread_turns VALUES(?,?,'inProgress',1,NULL,1,NULL)", (worker, old))
+                db.commit()
+                args = {"threadId": worker, "prompt": prompt}
+                call = {"name": "enqueue_task", "arguments": args, "_meta": {"threadId": owner}}
+                queue_id = str(uuid4())
+                with patch.object(panel_server.native_queue, "submit",
+                                  side_effect=lambda cli, target, key, text: {"clientUserMessageId": key, "id": queue_id}) as submit, \
+                        patch.dict(environ, CODEX_APP_RUNTIME_CLI_PATH=sys.executable):
+                    self.assertTrue(panel_server.call({**call, "_meta": {}})["isError"])
+                    self.assertTrue(panel_server.call({**call, "_meta": {"threadId": worker}})["isError"])
+                    reply = panel_server.call(call)
+                    submit.assert_called_once()
+                result = reply["structuredContent"]
+                self.assertEqual(result["queuedSubmissionId"], queue_id)
+                db.execute("INSERT INTO thread_items VALUES(?,?,'q','mcpToolCall',?,2,2000,2000,2000)",
+                           (owner, dispatch, json.dumps({"server": "director-panel", "pluginId": "codex-director@director-local",
+                            "tool": "enqueue_task", "status": "completed", "arguments": json.dumps(args), "result": reply})))
+                db.execute("UPDATE thread_turns SET status='completed',completed_at=3 WHERE turn_id=?", (dispatch,))
+                db.commit()
+                read = {"name": "snapshot", "_meta": {"threadId": owner},
+                        "arguments": {"receipt_turn": dispatch, "view_key": "main"}}
+                with patch.object(panel_server.native_queue, "pending", return_value=True):
+                    self.assertEqual(panel_server.call(read)["structuredContent"]["threads"][0]["status"], "queued")
+                db.execute("UPDATE thread_turns SET status='completed',completed_at=4 WHERE turn_id=?", (old,))
+                self.assertFalse(state.latest_forwards(owner))
+                db.execute("UPDATE thread_turns SET final_agent_item_id='old-answer' WHERE turn_id=?", (old,))
+                db.execute("INSERT INTO thread_items VALUES(?,?,'old-answer','agentMessage',?,4,4000,4000,4000)",
+                           (worker, old, json.dumps({"phase": "final_answer", "text": "A 的答复"})))
+                db.commit()
+                self.assertEqual(state.snapshot(owner)["threads"][0]["status"], "unconfirmed")
+                db.execute("INSERT INTO thread_turns VALUES(?,?,'completed',5,6,2,'answer')", (worker, new))
+                db.execute("INSERT INTO thread_items VALUES(?,?,'input','userMessage',?,3,5000,5000,5000)",
+                           (worker, new, json.dumps({"clientId": result["clientUserMessageId"]})))
+                db.execute("INSERT INTO thread_items VALUES(?,?,'answer','agentMessage',?,4,6000,6000,6000)",
+                           (worker, new, json.dumps({"phase": "final_answer", "text": "B 的答复"})))
+                db.commit()
+                self.assertEqual(state.latest_forwards(owner)[worker], (5, "独立任务 B"))
+                self.assertEqual(panel_server.call(read)["structuredContent"]["threads"][0]["status"], "review")
+
+    def test_manual_status_changes_only_the_current_idle_worker_turn(self):
+        owner, other, worker, first, new = [str(uuid4()) for _ in range(5)]
+        with tempfile.TemporaryDirectory() as directory, patch.dict(environ, CODEX_HOME=directory):
+            create_indexes(directory, [(uid, "user", uid) for uid in (owner, other, worker)])
+            queue_path = Path(directory) / "queue_1.sqlite"
+            with closing(sqlite3.connect(queue_path)) as queue, queue:
+                queue.execute("CREATE TABLE queued_items(thread_id, id)")
+            with state.write_registry() as registry:
+                registry.executemany("INSERT INTO directors VALUES(?,?,?)",
+                                     [(owner, "总讨论", "owner-key"), (other, "其他总讨论", "other-key")])
+                registry.execute("INSERT INTO workers VALUES(?,?,NULL,'worker-key','工作','running','已核对两处定义',2,?)",
+                                 (owner, worker, first))
+            history_path = Path(directory) / "thread_history_1.sqlite"
+            with closing(sqlite3.connect(history_path)) as history, history:
+                history.execute("INSERT INTO thread_turns VALUES(?,?,'completed',1,2,1,'answer')", (worker, first))
+                history.execute("INSERT INTO thread_items VALUES(?,?,'answer','agentMessage',?,1,2000,2000,2000)",
+                                (worker, first, json.dumps({"phase": "final_answer", "text": "本轮答复"})))
+
+            def action(status, actor=owner, turn=first, **meta):
+                return panel_server.call({"name": "set_thread_status",
+                    "arguments": {"thread_id": worker, "expected_turn_id": turn, "status": status},
+                    "_meta": {"threadId": actor, **meta} if actor else {}})
+
+            def current():
+                return state.snapshot(owner)["threads"][0]
+
+            self.assertEqual((current()["status_turn_id"], current()["summary"]), (first, "已核对两处定义"))
+            self.assertNotIn("status_turn_id", state.snapshot(view_key="owner-key")["threads"][0])
+            self.assertNotIn("status_turn_id", state.snapshot(worker)["threads"][0])
+            for actor in (None, worker, other):
+                self.assertTrue(action("completed", actor)["isError"])
+            self.assertTrue(action("completed", hostId="ssh-test")["isError"])
+            self.assertEqual(action("completed")["structuredContent"]["status"], "completed")
+            self.assertEqual((current()["status"], current()["summary"]), ("completed", "已核对两处定义"))
+            with self.assertRaises(ValueError):
+                state.update(worker, status="review", summary="补交说明")
+
+            with closing(sqlite3.connect(queue_path)) as queue, queue:
+                queue.execute("INSERT INTO queued_items VALUES(?,'queued')", (worker,))
+            self.assertEqual(current()["status"], "queued")
+            self.assertTrue(action("review")["isError"])
+            with closing(sqlite3.connect(queue_path)) as queue, queue:
+                queue.execute("DELETE FROM queued_items")
+            self.assertEqual(action("review")["structuredContent"]["status"], "review")
+            self.assertEqual((current()["status"], current()["summary"]), ("review", "已核对两处定义"))
+            self.assertEqual(action("completed")["structuredContent"]["status"], "completed")
+            with closing(sqlite3.connect(history_path)) as history, history:
+                history.execute("INSERT INTO thread_turns VALUES(?,?,'inProgress',3,NULL,2,NULL)", (worker, new))
+                history.execute("""INSERT INTO thread_items(thread_id,turn_id,item_id,item_type,item_json)
+                                   VALUES(?,?,'question','userMessage',?)""",
+                                (worker, new, json.dumps({"content": [{"text": "再检查第三处定义\n附录供参考"}]})))
+            self.assertEqual((current()["status"], current()["summary"]), ("running", "再检查第三处定义"))
+            self.assertTrue(action("review")["isError"])
+            self.assertTrue(action("completed", turn=new)["isError"])
+            with closing(sqlite3.connect(history_path)) as history, history:
+                history.execute("UPDATE thread_turns SET status='completed',completed_at=4,final_agent_item_id='new-answer' WHERE turn_id=?", (new,))
+                history.execute("""INSERT INTO thread_items(thread_id,turn_id,item_id,item_type,item_json)
+                                   VALUES(?,?,'new-answer','agentMessage','{"phase":"final_answer","text":"新的答复"}')""",
+                                (worker, new))
+            self.assertEqual((current()["status"], current()["summary"]), ("review", "再检查第三处定义"))
+            with state.write_registry() as registry:
+                registry.execute("UPDATE workers SET status='running',summary='上一轮进展',updated=2.5,turn_id=NULL")
+            self.assertEqual((current()["status"], current()["summary"]), ("review", "再检查第三处定义"))
+            self.assertEqual(action("completed", turn=new)["structuredContent"]["status"], "completed")
+            self.assertEqual(action("review", turn=new)["structuredContent"]["status"], "review")
+            self.assertEqual(current()["summary"], "再检查第三处定义")
+
+    def test_select_existing_project_chat_without_dispatch(self):
+        owner, worker, other, outside = [str(uuid4()) for _ in range(4)]
+        with tempfile.TemporaryDirectory() as directory, patch.dict(environ, CODEX_HOME=directory):
+            create_indexes(directory, [(uid, "user", uid) for uid in (owner, worker, other, outside)])
+            state.initialize(owner, owner)
+            with closing(sqlite3.connect(Path(directory) / "state_5.sqlite")) as db, db:
+                db.execute("ALTER TABLE threads ADD COLUMN project_id TEXT")
+                db.execute("UPDATE threads SET project_id=CASE WHEN id=? THEN 'other' ELSE 'project' END", (outside,))
+            with self.assertRaisesRegex(ValueError, "已有总讨论"):
+                state.initialize(other, other)
+            state.initialize(outside, outside)
+            with closing(sqlite3.connect(Path(directory) / "thread_history_1.sqlite")) as db, db:
+                db.execute("INSERT INTO thread_turns VALUES(?, 'onboard','inProgress',1,NULL,1,NULL)", (owner,))
+                for index, (cursor, following, ids) in enumerate([(None, "p2", [owner, other]), ("p2", None, [worker, outside])]):
+                    args = {"mode": "history", "hostId": "local", "archived": False, "cursor": cursor}
+                    content = {"threads": [{"id": uid, "title": uid, "kind": "codex", "hostId": "local",
+                                             "projectId": "other" if uid == outside else "project"} for uid in ids],
+                               "nextCursor": following}
+                    item = {"server": "codex_app", "tool": "list_threads", "status": "completed",
+                            "arguments": json.dumps(args), "result": {"content": [{"type": "text", "text": json.dumps(content)}]}}
+                    db.execute("INSERT INTO thread_items VALUES(?,'onboard',?,'mcpToolCall',?,?,?,?,?)",
+                               (owner, str(index), json.dumps(item), index, 1000, 1000, 1000))
+            with state.readonly(state.panel_db()) as registry:
+                result = panel_onboarding.scope(owner, registry, candidates=True)
+            self.assertTrue(result["complete"])
+            self.assertEqual({r["thread_id"] for r in result["candidates"]}, {worker, other})
+            result = panel_onboarding.adopt(owner, thread_id=worker, title=worker, project_id="project")
+            self.assertEqual([r["status"] for r in result["threads"]], ["ready"])
+            with self.assertRaises(ValueError):
+                state.track(owner, thread_id=worker, title=worker)
+            with self.assertRaises(ValueError):
+                panel_onboarding.adopt(outside, thread_id=worker, title=worker, project_id="other")
+            with closing(sqlite3.connect(Path(directory) / "state_5.sqlite")) as db, db:
+                db.execute("UPDATE threads SET archived=1 WHERE id=?", (other,))
+            with self.assertRaises(ValueError):
+                panel_onboarding.adopt(owner, thread_id=other, title=other, project_id="project")
+            with state.write_registry() as registry:
+                state.record_forward(registry, owner, worker, (state.time.time()+1, "审查指定版本"), worker, "")
+            self.assertEqual(state.snapshot(owner)["threads"][0]["status"], "unconfirmed")
 
     def test_utf8_payload_over_stdin(self):
         root = str(uuid4())
@@ -232,14 +389,15 @@ class PanelLifecycle(unittest.TestCase):
                 history.execute("""INSERT INTO thread_items(thread_id,turn_id,item_id,item_type,item_json)
                                 VALUES(?, 'first','answer','agentMessage','{"phase":"final_answer"}')""", (worker,))
                 history.commit()
-                self.assertEqual(state.snapshot(view_key=key)["threads"][0]["status"], "review")
+                row = state.snapshot(view_key=key)["threads"][0]
+                self.assertEqual((row["status"], row["summary"]), ("review", "审核第三章"))
                 with patch.object(state.time, "time", return_value=19):
                     state.update(root, thread_id=worker, status="completed", summary="已确认")
                 self.assertEqual(state.snapshot(view_key=key)["threads"][0]["status"], "completed")
 
                 send(worker, 20, host=None, prompt="【Director 派工】复核修订后的证明")
                 history.commit()
-                self.assertEqual(state.snapshot(view_key=key)["threads"][0]["status"], "running")
+                self.assertEqual(state.snapshot(view_key=key)["threads"][0]["status"], "pending")
                 history.execute("INSERT INTO thread_turns VALUES(?, 'second','inProgress',20,NULL,2,NULL)", (worker,))
                 history.commit()
                 rows = state.snapshot(view_key=key)["threads"]

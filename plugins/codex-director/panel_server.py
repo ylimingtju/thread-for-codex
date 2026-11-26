@@ -7,6 +7,7 @@ import subprocess
 import sys
 from uuid import UUID
 
+import native_queue
 import panel_receipts
 import panel_state
 
@@ -35,26 +36,39 @@ def descriptor(name, title, description, resource=None):
             required = ['url']
             meta['ui']['visibility'] = ['app']
             meta['openai/ui']['entrypoints'] = [{'type': 'deepLink', 'patterns': [panel_state.PANEL_LINK]}]
+    if name == 'enqueue_task':
+        fields = {'threadId': {'type': 'string', 'format': 'uuid'},
+                  'prompt': {'type': 'string', 'minLength': 1, 'maxLength': 60000}}
+        required = ['threadId', 'prompt']
+        meta['ui']['visibility'] = ['model']
     if name == 'snapshot':
         fields['receipt_turn'] = {'type': 'string', 'format': 'uuid'}
     if name == 'open_thread':
         fields['thread_id'] = {'type': 'string', 'format': 'uuid'}
         required.append('thread_id')
+    if name == 'set_thread_status':
+        fields = {'thread_id': {'type': 'string', 'format': 'uuid'},
+                  'expected_turn_id': {'type': 'string', 'format': 'uuid'},
+                  'status': {'type': 'string', 'enum': ['completed', 'review']}}
+        required = list(fields)
     return {
         'name': name, 'title': title, 'description': description,
         'inputSchema': {'type': 'object', 'properties': fields, 'required': required, 'additionalProperties': False},
         '_meta': meta,
-        'annotations': {'readOnlyHint': name != 'open_thread', 'destructiveHint': False, 'openWorldHint': False},
+        'annotations': {'readOnlyHint': name not in ('open_thread', 'enqueue_task', 'set_thread_status'),
+                        'destructiveHint': False, 'openWorldHint': False},
     }
 
 
 TOOLS = {tool['name']: tool for tool in (
+    descriptor('enqueue_task', '加入执行串队列', '仅总讨论可调用。按用户对目标聊天的派工授权，将完整独立任务加入已登记执行串的本机 Codex 原生队列。'),
     descriptor('show_entry', '项目讨论串入口', '在总讨论显示面板入口，在执行串显示返回总讨论的入口。传入当前聊天的只读配对码。', ENTRY),
     descriptor('show_receipt', '派工回执', '登记本轮全部派工后，在总讨论正文显示自动更新的回执。传入本总讨论的只读配对码。', RECEIPT),
     descriptor('show_panel', '项目讨论串', '打开当前聊天的项目讨论串面板。可传入当前聊天的只读配对码。', PANEL),
     descriptor('open_panel_link', '项目讨论串', '从当前总讨论的回复末尾打开右侧面板。', PANEL),
     descriptor('snapshot', '读取讨论串', '刷新当前绑定的项目讨论串。'),
     descriptor('open_thread', '打开原生聊天', '按用户点击的行打开本项目已登记的本地聊天。'),
+    descriptor('set_thread_status', '更改执行串状态', '按用户点击标为已完成或重新打开，只修改当前总讨论名下执行串的面板状态。'),
 )}
 
 
@@ -112,7 +126,7 @@ def call(params):
         raise ProtocolError(-32602, '无效的工具调用。')
     schema = TOOLS[name]['inputSchema']
     if (not args.keys() <= schema['properties'].keys() or not set(schema['required']) <= args.keys()
-            or not all(isinstance(value, str) and 0 < len(value) <= 256 for value in args.values())):
+            or not all(isinstance(value, str) and 0 < len(value) <= schema['properties'][field].get('maxLength', 256) for field, value in args.items())):
         raise ProtocolError(-32602, '无效的工具参数。')
     if name == 'open_panel_link' and args['url'] != panel_state.PANEL_LINK:
         raise ProtocolError(-32602, '无法识别这个面板链接。')
@@ -121,6 +135,17 @@ def call(params):
         actor = meta.get('threadId') if isinstance(meta, dict) else None
         if isinstance(meta, dict) and 'threadId' in meta and (not isinstance(actor, str) or not actor):
             raise ValueError('宿主提供的聊天标识无效。')
+        if name == 'enqueue_task':
+            if not actor or meta.get('hostId', 'local') != 'local':
+                raise ValueError('需要宿主提供的本机总讨论身份。')
+            result = native_queue.enqueue(actor, args['threadId'], args['prompt'])
+            return {'content': [{'type': 'text', 'text': json.dumps(result)}], 'structuredContent': result}
+        if name == 'set_thread_status':
+            if not actor or meta.get('hostId', 'local') != 'local':
+                raise ValueError('需要宿主提供的本机总讨论身份。')
+            result = panel_state.update(actor, **args)
+            label = '已标为完成。' if result['status'] == 'completed' else '已重新打开，未启动任务。'
+            return {'content': [{'type': 'text', 'text': label}], 'structuredContent': result}
         if name == 'open_panel_link' and not actor:
             raise ValueError('请从项目总讨论的回复末尾打开面板。')
         if name == 'show_receipt' or 'receipt_turn' in args:

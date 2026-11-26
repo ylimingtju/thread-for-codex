@@ -4,6 +4,7 @@ import re
 import sqlite3
 import sys
 
+from panel_onboarding import explicit_reference
 from panel_state import PANEL_LINK, panel_db, readonly, uuid_text
 
 
@@ -51,8 +52,15 @@ def hook_result(event):
         if event.get('stop_hook_active') is not False or not isinstance(reply, str) or not reply.strip():
             return
     actor = uuid_text(event.get('session_id'))
+    start_hint = ""
+    if name == 'UserPromptSubmit':
+        prompt = event.get('prompt')
+        if isinstance(prompt, str) and (prompt.strip() == '$codex-director:codex-director' or
+                explicit_reference(actor, event.get('turn_id'), prompt)):
+            start_hint = ('用户本轮主动调用 Thread for Codex 主插件或主技能。按主技能的首次设置规则核对本串角色及项目归属。'
+                          '已有归属发生冲突时先让用户决定。若用户明确只咨询插件，请按该请求回答。\n')
     if not panel_db().is_file():
-        return
+        return {'hookSpecificOutput': {'hookEventName': name, 'additionalContext': start_hint}} if start_hint else None
     with readonly(panel_db()) as db:
         row = db.execute(
             "SELECT id FROM directors WHERE id = ? UNION ALL "
@@ -60,7 +68,7 @@ def hook_result(event):
             "WHERE workers.thread_id = ? AND workers.status != 'archived'", (actor, actor),
         ).fetchone()
     if not row:
-        return
+        return {'hookSpecificOutput': {'hookEventName': name, 'additionalContext': start_hint}} if start_hint else None
     if row['id'] == actor:
         url, label = PANEL_LINK, '打开项目讨论串'
     else:
@@ -76,15 +84,15 @@ def hook_result(event):
             '如果看不到完整原文，请保留此前的交付，不要凭记忆重写。\n' + footer
         )}
     role_hint = (
-        '本串是已登记的总讨论，负责选串、派工和确认交付。能直接引用已有答案时可直接答。'
-        '需要调查、计算、实质判断、审查或修改文件时，交给执行串。派工失败时说明原因。'
-        '确认送达并登记后，用本总讨论的 view_key 调用一次 director-panel.show_receipt，结束本轮。仅在用户明确要求等结果时持续等待。\n'
+        '总讨论动手前先定归属。协调、确认交付、直接引用唯一已知答案可自办。新调查、判断、设计、计算、审查、运行或修改默认派工，明确要求亲办除外。'
+        '按点名或链接、已登记职责和近期相关派工选串，歧义只问冲突，交接保留本轮交付与权限边界。独立任务先按真实 hostId、threadId 取 wait_threads(timeoutMs: 0) 快照。'
+        '确认空闲且无待启动或排队任务才直发，否则对获授权的本地配对串用 enqueue_task，取得条目 ID 才报已排队。仅明确要求立即补正同一任务才追加。'
+        '每批 show_receipt 一次即结束，明确要求才持续等待。派工答疑确认本轮后默认只列原串链接。\n'
         if row['id'] == actor else ''
     )
     return {'hookSpecificOutput': {
         'hookEventName': name,
-        'additionalContext': role_hint + '本串面向用户的回复（包括提问和直接追问的答复）以空行和以下独立一行结束，'
-                             '链接只写一次。中途进展无需附链接。\n' + footer,
+        'additionalContext': start_hint + role_hint + '每条最终答复（含追问）末尾空一行，单列以下链接一次。中途进展省略。\n' + footer,
     }}
 
 

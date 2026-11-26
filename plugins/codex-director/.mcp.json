@@ -4,7 +4,7 @@
       "command": "python3",
       "args": ["-B", "./panel_server.py"],
       "cwd": ".",
-      "env_vars": ["HOME", "CODEX_HOME", "PATH"],
+      "env_vars": ["HOME", "CODEX_HOME", "PATH", "CODEX_APP_RUNTIME_CLI_PATH"],
       "tool_timeout_sec": 15
     }
   }

@@ -11,6 +11,7 @@ import stat
 import sys
 import time
 from uuid import UUID
+from xml.sax.saxutils import unescape
 
 from panel_usage import usage_for_threads
 
@@ -129,7 +130,18 @@ def latest_turn(db, thread):
             EXISTS(SELECT 1 FROM thread_items i
                    WHERE i.thread_id=t.thread_id AND i.turn_id=t.turn_id
                      AND i.item_id=t.final_agent_item_id AND i.item_type='agentMessage'
-                     AND json_extract(i.item_json,'$.phase')='final_answer') AS delivered
+                     AND json_extract(i.item_json,'$.phase')='final_answer') AS delivered,
+            (SELECT p.started_at FROM thread_turns p
+             WHERE p.thread_id=t.thread_id AND p.started_at IS NOT NULL AND p.rollout_ordinal<t.rollout_ordinal
+             ORDER BY p.rollout_ordinal DESC LIMIT 1) AS previous_start,
+            (SELECT substr(CASE WHEN i.item_type='userMessage' THEN json_extract(i.item_json,'$.content[0].text')
+                                ELSE json_extract(i.item_json,'$.output') END,1,1024)
+             FROM thread_items i WHERE i.thread_id=t.thread_id AND i.turn_id=t.turn_id AND (
+                 (i.item_type='userMessage' AND trim(json_extract(i.item_json,'$.content[0].text'))<>'')
+                 OR (i.item_type='functionCallOutput' AND json_extract(i.item_json,'$.namespace')='codex_app'
+                     AND json_extract(i.item_json,'$.name') IN ('create_thread','send_message_to_thread')
+                     AND json_extract(i.item_json,'$.output') LIKE '<codex_delegation>%'))
+             ORDER BY i.rollout_ordinal LIMIT 1) AS request
         FROM thread_turns t WHERE t.thread_id=? AND t.started_at IS NOT NULL
         ORDER BY t.rollout_ordinal DESC LIMIT 1""", (thread,)).fetchone()
 
@@ -145,12 +157,24 @@ def current_turn(thread):
     return None
 
 
-def initialize(actor, title):
+def initialize(actor, title, *, alongside=False):
+    import panel_onboarding
     actor, title = uuid_text(actor), label(title, 240)
     local_thread(actor)
     with write_registry() as db:
         if db.execute("SELECT 1 FROM workers WHERE thread_id=?", (actor,)).fetchone():
             raise ValueError("已登记的执行串不能成为新的项目总线程。")
+        if not db.execute("SELECT 1 FROM directors WHERE id=?", (actor,)).fetchone():
+            context = panel_onboarding.scope(actor, db)
+            if context["pending_owner"]:
+                raise ValueError("本串已有准备中的执行串归属，请先完成原配对。")
+            if context["project_changed"] and not alongside:
+                raise ValueError("当前聊天的项目归属已变化，请重新定位。")
+            conflicts = context["directors"]
+            if conflicts and not alongside:
+                raise ValueError("本项目已有总讨论，请先让用户选择：" + json.dumps(conflicts, ensure_ascii=False))
+            if context["unresolved_directors"] and not alongside:
+                raise ValueError("部分已登记总讨论的项目尚不明确。请核对本机聊天列表，再决定是否另设。")
         db.execute("""INSERT INTO directors VALUES(?,?,?) ON CONFLICT(id)
                       DO UPDATE SET title=excluded.title""", (actor, title, secrets.token_urlsafe(24)))
     return snapshot(actor)
@@ -206,13 +230,14 @@ def tool_receipts(db, actor, tool, turn_id=None):
             json_extract(item_json,'$.result.content[0].text') AS content,
             coalesce(started_at_ms,created_at_ms) AS sent_ms FROM thread_items
         WHERE thread_id=? AND item_type='mcpToolCall' AND (? IS NULL OR turn_id=?)
-          AND json_extract(item_json,'$.server')='codex_app'
+          AND json_extract(item_json,'$.server')=?
+          AND (? != 'enqueue_task' OR json_extract(item_json,'$.pluginId')='codex-director@director-local')
           AND json_extract(item_json,'$.tool')=?
           AND json_extract(item_json,'$.status')='completed'
           AND json_extract(item_json,'$.error') IS NULL
           AND coalesce(json_extract(item_json,'$.result.isError'),0)=0
           AND json_extract(item_json,'$.result.content[0].type')='text'
-        ORDER BY rollout_ordinal DESC""", (actor, turn_id, turn_id, tool))
+        ORDER BY rollout_ordinal DESC""", (actor, turn_id, turn_id, "director-panel" if tool == "enqueue_task" else "codex_app", tool, tool))
 
 
 def dispatch_receipts(db, actor, tool, turn_id=None):
@@ -225,13 +250,26 @@ def dispatch_receipts(db, actor, tool, turn_id=None):
             continue
         if not isinstance(args.get("prompt"), str) or result.get("hostId", "local") != "local":
             continue
-        if tool == "send_message_to_thread" and (args.get("threadId") != result.get("threadId")
+        if tool == "enqueue_task" and (not isinstance(result.get("clientUserMessageId"), str)
+                                        or not isinstance(result.get("queuedSubmissionId"), str)):
+            continue
+        if tool in ("send_message_to_thread", "enqueue_task") and (args.get("threadId") != result.get("threadId")
                                                  or args.get("hostId", "local") != "local"):
             continue
         yield args, result, sent_ms
 
 
-def forward_receipts(actor):
+def queued_turn(history, target, client_id):
+    return history.execute("""SELECT t.turn_id,t.status,t.completed_at,i.created_at_ms,
+            (f.item_type='agentMessage' AND json_extract(f.item_json,'$.phase')='final_answer'
+             AND length(trim(json_extract(f.item_json,'$.text')))>0) AS delivered
+        FROM thread_items i JOIN thread_turns t ON t.thread_id=i.thread_id AND t.turn_id=i.turn_id
+        LEFT JOIN thread_items f ON f.thread_id=t.thread_id AND f.turn_id=t.turn_id AND f.item_id=t.final_agent_item_id
+        WHERE i.thread_id=? AND i.item_type='userMessage' AND json_extract(i.item_json,'$.clientId')=?
+        LIMIT 1""", (target, client_id)).fetchone()
+
+
+def forward_receipts(actor, unstarted=None):
     with readonly(home() / "thread_history_1.sqlite") as db:
         for args, result, sent_ms in dispatch_receipts(db, actor, "send_message_to_thread"):
             try:
@@ -244,15 +282,23 @@ def forward_receipts(actor):
             subject = first_line[len(DISPATCH_PREFIX):].strip()[:240] if first_line.startswith(DISPATCH_PREFIX) else ""
             yield thread, sent_ms / 1000, subject
 
+        for args, result, sent_ms in dispatch_receipts(db, actor, "enqueue_task"):
+            thread = result["threadId"]
+            started = queued_turn(db, thread, result["clientUserMessageId"])
+            if started and started["created_at_ms"]:
+                subject = args["prompt"].partition("\n")[0][len(DISPATCH_PREFIX):].strip()[:240]
+                yield thread, started["created_at_ms"] / 1000, subject
+            elif unstarted is not None:
+                unstarted[thread] = max(unstarted.get(thread, 0), sent_ms / 1000)
 
-def latest_forwards(actor, target=None):
+
+def latest_forwards(actor, target=None, *, unstarted=None):
     # A marked message assigns work. An older unmarked send needs explicit track(target).
     forwards = {}
-    for thread, sent, subject in forward_receipts(actor):
+    for thread, sent, subject in forward_receipts(actor, unstarted):
         if (target is None and subject) or target == thread:
-            forwards.setdefault(thread, (sent, subject))
-            if target is not None:
-                break
+            if thread not in forwards or sent > forwards[thread][0]:
+                forwards[thread] = (sent, subject)
     return forwards
 
 
@@ -310,6 +356,8 @@ def record_forward(db, owner, thread, forward, title, summary):
         return
     summary = summary or subject or "总线程已向原串派工"
     if old:
+        if old["status"] == "ready":
+            db.execute("INSERT OR IGNORE INTO worker_usage_start VALUES(?,?,?)", (owner, thread, sent))
         db.execute("""UPDATE workers SET status='running',summary=?,updated=?,turn_id=NULL
                       WHERE rowid=?""", (summary, sent, old["rowid"]))
     else:
@@ -335,6 +383,8 @@ def track(actor, *, title, thread_id=None, pending_id=None, summary=None):
         if thread_id and db.execute("SELECT 1 FROM directors WHERE id=?", (thread_id,)).fetchone():
             raise ValueError("不能把总线程登记为执行串。")
         old = find_worker(db, actor, thread_id, pending_id)
+        if old and old["status"] == "ready" and (not forward or forward[0] <= old["updated"]):
+            raise ValueError("请先向待派工的旧串发送实际任务，再用本次成功回执登记。")
         if forward:
             record_forward(db, actor, thread_id, forward, title, summary)
         elif not old:
@@ -353,8 +403,15 @@ def track(actor, *, title, thread_id=None, pending_id=None, summary=None):
     return snapshot(actor)
 
 
-def update(actor, *, status, summary, thread_id=None, pending_id=None):
-    actor, summary = uuid_text(actor), label(summary)
+def update(actor, *, status, summary=None, thread_id=None, pending_id=None, expected_turn_id=None):
+    actor = uuid_text(actor)
+    manual = expected_turn_id is not None
+    if manual:
+        uuid_text(expected_turn_id)
+        if status not in ("completed", "review") or pending_id is not None:
+            raise ValueError("只能标记已回复或已完成的正式执行串。")
+    else:
+        summary = label(summary)
     if status not in ("preparing", "running", "waiting", "review", "completed", "blocked", "archived"):
         raise ValueError("无效的执行串状态。")
     with write_registry() as db:
@@ -362,8 +419,10 @@ def update(actor, *, status, summary, thread_id=None, pending_id=None):
         if director:
             thread_id, pending_id = handles(thread_id, pending_id)
             row = find_worker(db, actor, thread_id, pending_id)
+            if manual and db.execute("SELECT 1 FROM directors WHERE id=?", (thread_id,)).fetchone():
+                raise ValueError("不能更改总讨论的任务状态。")
         else:
-            if pending_id is not None or thread_id not in (None, actor) or status in ("completed", "archived", "preparing"):
+            if manual or pending_id is not None or thread_id not in (None, actor) or status in ("completed", "archived", "preparing"):
                 raise ValueError("执行串只能报告自己的进展，结果由总线程确认。")
             row = db.execute("SELECT rowid,* FROM workers WHERE thread_id=?", (actor,)).fetchone()
         if not row:
@@ -372,7 +431,15 @@ def update(actor, *, status, summary, thread_id=None, pending_id=None):
             raise ValueError("请先补全真实聊天 ID。")
         if row["thread_id"] and status == "preparing":
             raise ValueError("该执行串已经创建。")
-        turn = current_turn(row["thread_id"])
+        if not manual and row["status"] == "ready" and status != "archived":
+            # A queued task may start before the director opens its receipt.
+            forward = latest_forwards(row["director"]).get(row["thread_id"])
+            if not forward or forward[0] <= row["updated"]:
+                raise ValueError("尚未收到开始执行的派工。")
+            record_forward(db, row["director"], row["thread_id"], forward, row["title"], forward[1])
+        turn = expected_turn_id if manual else current_turn(row["thread_id"])
+        if manual:
+            summary = validate_status_change(actor, row, status, turn)
         if not director and row["status"] == "completed" and (not turn or turn == row["turn_id"]):
             raise ValueError("本轮任务已由总线程确认；新的追问将恢复执行。")
         if status == "archived":
@@ -384,40 +451,130 @@ def update(actor, *, status, summary, thread_id=None, pending_id=None):
         else:
             db.execute("UPDATE workers SET status=?,summary=?,updated=?,turn_id=? WHERE rowid=?",
                        (status, summary, time.time(), turn, row["rowid"]))
-    return snapshot(actor)
+    return {"status": status} if manual else snapshot(actor)
 
 
-def observed(row, turn, native):
+def task_excerpt(request):
+    request = (request or "").strip()
+    if request.startswith("<codex_delegation>"):
+        request = unescape(request.partition("<input>")[2].partition("</input>")[0].strip())
+    line = request.splitlines()[0] if request else ""
+    return line.removeprefix(DISPATCH_PREFIX).strip()[:240]
+
+
+def observed(row, turn, native, forward=None):
     status, summary, updated = row["status"], row["summary"], row["updated"]
+    if summary in ("执行串已交付，待总线程确认", "总线程已向原串派工"):
+        summary = ""
     if native and native["archived"]:
         return "archived", summary, native["archived_at"] or updated
+    if status == "ready" or not row["thread_id"]:
+        return status, summary, updated
     if not turn:
-        return status, summary, updated
+        return "unconfirmed" if status == "running" else status, summary, updated
     # The previous turn can still be the newest one while the forwarded prompt is queued.
-    if row["turn_id"] is None and turn["started_at"] < int(updated):
-        return status, summary, updated
+    if row["turn_id"] is None and (
+        turn["started_at"] < int(updated)
+        or (status == "running" and turn["completed_at"] is not None and turn["completed_at"] <= updated)
+    ):
+        if status == "review" and not summary:
+            summary = task_excerpt(turn["request"])
+        return ("pending" if status == "running" else status), summary, updated
     new_turn = row["turn_id"] != turn["turn_id"]
+    request = task_excerpt(turn["request"])
+    # A dispatch registered without a turn ID must match this turn, not a later follow-up.
+    previous_start = turn["previous_start"]
+    first_after_dispatch = row["turn_id"] is None and status == "running" and (
+        previous_start is None or (
+            forward and forward[0] == updated and previous_start < int(updated)
+            and (not request or not forward[1] or request == forward[1])
+        )
+    )
+    if not summary or (new_turn and not first_after_dispatch):
+        summary = request
+    if turn["status"] == "inProgress":
+        if not new_turn and status in ("waiting", "blocked"):
+            return status, summary, updated
+        if status == "running" and (not new_turn or first_after_dispatch):
+            return status, summary, updated
+        return "running", summary or "原串已收到新的追问", turn["started_at"]
     if not new_turn and status != "running":
         return status, summary, updated
-    if turn["status"] == "inProgress" and new_turn:
-        if status == "running" and not row["turn_id"]:
-            return status, summary, updated
-        return "running", "原串已收到新的追问", turn["started_at"]
     if turn["status"] in ("failed", "interrupted"):
         return "blocked", "本轮执行失败" if turn["status"] == "failed" else "本轮已中断", turn["completed_at"] or updated
     if turn["status"] == "completed":
         if turn["delivered"]:
-            return "review", "执行串已交付，待总线程确认", turn["completed_at"] or updated
+            return "review", summary, turn["completed_at"] or updated
         return "blocked", "本轮已结束，尚无已交付的答复", turn["completed_at"] or updated
-    return status, summary, updated
+    return ("unconfirmed" if status == "running" else status), summary, updated
 
 
-def sync_forwards(owner, rows):
-    stamps = {row["thread_id"]: row["updated"] for row in rows}
+def queue_depths(thread_ids):
     try:
-        forwards = latest_forwards(owner)
-    except sqlite3.OperationalError:
-        return False  # The explicit registry still works when host history is unavailable.
+        with readonly(home() / "queue_1.sqlite") as queues:
+            return dict(queues.execute("SELECT thread_id,count(*) FROM queued_items WHERE thread_id IN "
+                                      "(SELECT value FROM json_each(?)) GROUP BY thread_id",
+                                      (json.dumps(thread_ids),)))
+    except sqlite3.Error:
+        return None
+
+
+def queue_status(status, thread, turn, depths, unstarted):
+    depth = None if depths is None else depths.get(thread, 0)
+    if status in ("archived", "waiting", "blocked") or (turn and turn["status"] == "inProgress"):
+        return status, depth
+    if depth:
+        return "queued", depth
+    if thread in unstarted and (not turn or unstarted[thread] >= turn["started_at"]):
+        return "unconfirmed", depth
+    return status, depth
+
+
+def status_turn(status, turn, native, depth):
+    if (status in ("review", "completed") and depth == 0 and native and not native["archived"]
+            and turn and turn["status"] == "completed" and turn["completed_at"] is not None and turn["delivered"]):
+        return turn["turn_id"]
+    return None
+
+
+def validate_status_change(actor, row, status, expected_turn):
+    from panel_onboarding import project_ids
+
+    target = row["thread_id"]
+    if not target or actor == target or row["status"] in ("archived", "ready") or local_thread(actor)["archived"]:
+        raise ValueError("只能更改本总讨论下已派工、未归档的执行串。")
+    native = local_thread(target)
+    projects = project_ids((actor, target), {})
+    if actor in projects and target in projects and projects[actor] != projects[target]:
+        raise ValueError("该执行串与总讨论已位于不同项目。")
+    # Plugin queue submissions and this update share the registry write lock.
+    depths = queue_depths([target])
+    unstarted = {}
+    try:
+        forward = latest_forwards(actor, target, unstarted=unstarted).get(target)
+        with readonly(home() / "thread_history_1.sqlite") as history:
+            turn = latest_turn(history, target)
+    except sqlite3.Error:
+        raise ValueError("暂时无法确认原串状态，请稍后刷新。") from None
+    if depths is None or not turn:
+        raise ValueError("暂时无法确认原串状态或队列，请稍后刷新。")
+    if turn["turn_id"] != expected_turn:
+        raise ValueError("原串已有新回合或派工，请刷新后再操作。")
+    if forward and forward[0] > row["updated"] and (
+        turn["started_at"] < int(forward[0]) or (turn["completed_at"] or 0) <= forward[0]
+    ):
+        raise ValueError("原串已有新派工尚未完成，请先查看原串。")
+    actual, summary, _ = observed(row, turn, native, forward)
+    actual, depth = queue_status(actual, target, turn, depths, unstarted)
+    if depth or actual in ("queued", "unconfirmed"):
+        raise ValueError("原串有任务排队或尚未确认开始，请先查看原串。")
+    if not status_turn(actual, turn, native, depth) or actual == status:
+        raise ValueError("当前状态已变化。只可在原串答复且空闲后标记或重新打开。")
+    return summary
+
+
+def sync_forwards(owner, rows, forwards):
+    stamps = {row["thread_id"]: row["updated"] for row in rows}
     changed = False
     for thread, forward in forwards.items():
         if stamps.get(thread, 0) >= forward[0]:
@@ -472,7 +629,7 @@ def usage_starts(owner, workers):
 
 
 def project_usage(owner, rows, native_by_id):
-    workers = {r["thread_id"]: r["pending_id"] for r in rows if r["thread_id"]}
+    workers = {r["thread_id"]: r["pending_id"] for r in rows if r["thread_id"] and r["status"] != "ready"}
     starts = usage_starts(owner, workers)
     sources = []
     for thread in (owner, *workers):
@@ -510,7 +667,15 @@ def snapshot(actor=None, view_key=None, *, include_usage=False):
         if view_key is not None and view_key != own_key:
             raise ValueError("配对码与当前聊天不匹配。")
 
-    if role == "director" and sync_forwards(director["id"], rows):
+    forwards, unstarted = {}, {}
+    dispatch_read = False
+    if role == "director":
+        try:
+            forwards = latest_forwards(director["id"], unstarted=unstarted)
+            dispatch_read = True
+        except sqlite3.OperationalError:
+            pass  # Keep the explicit registry available without native history.
+    if forwards and sync_forwards(director["id"], rows, forwards):
         with readonly(panel_db()) as db:
             rows = db.execute("SELECT * FROM workers WHERE director=? ORDER BY rowid", (director["id"],)).fetchall()
     native_by_id = native_threads([director["id"], *(r["thread_id"] for r in rows if r["thread_id"])])
@@ -519,16 +684,25 @@ def snapshot(actor=None, view_key=None, *, include_usage=False):
               "director_title": director_title, "view_key": own_key, "threads": []}
     if role == "director" and include_usage:
         result["token_usage"] = project_usage(director["id"], rows, native_by_id)
+    depths = queue_depths([row["thread_id"] for row in rows]) if role == "director" else None
+    can_change = role == "director" and actor and dispatch_read and actor in native_by_id and not native_by_id[actor]["archived"]
     renamed_workers = []
     for row, turn in observations(rows):
         native = native_by_id.get(row["thread_id"])
         title = display_title(native, row["title"])
         if title != row["title"]:
             renamed_workers.append((title, row["thread_id"], director["id"], row["title"]))
-        status, summary, stamp = observed(row, turn, native)
+        status, summary, stamp = observed(row, turn, native, forwards.get(row["thread_id"]))
+        status, depth = queue_status(status, row["thread_id"], turn, depths, unstarted)
         result["threads"].append({"thread_id": row["thread_id"], "pending_id": row["pending_id"],
                                   "title": title, "status": status, "summary": summary,
                                   "updated_at": datetime.fromtimestamp(stamp, timezone.utc).isoformat()})
+        if depth is not None and row["thread_id"]:
+            result["threads"][-1]["queued_count"] = depth
+        if can_change and (turn_id := status_turn(status, turn, native, depth)):
+            result["threads"][-1]["status_turn_id"] = turn_id
+        if row["thread_id"] in forwards:
+            result["threads"][-1]["latest_assignment"] = forwards[row["thread_id"]][1]
     # Keep the fallback labels current for existing panels. A rename is not task activity.
     if director_title != director["title"] or renamed_workers:
         with write_registry() as db:
@@ -557,18 +731,31 @@ def observations(rows):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["init", "track", "update", "show"])
+    parser.add_argument("action", choices=["init", "track", "update", "show", "setup", "candidates", "adopt", "invocation"])
     parser.add_argument("payload", nargs="?")
     parser.add_argument("--stdin", action="store_true", help="从标准输入读取 UTF-8 标题或 JSON")
+    parser.add_argument("--alongside", action="store_true", help="用户明确选择另设独立总讨论")
     args = parser.parse_args()
-    if args.stdin and (args.payload is not None or args.action == "show"):
-        parser.error("--stdin 仅用于 init、track 或 update，且不能和位置参数一起使用。")
+    if args.alongside and args.action != "init":
+        parser.error("--alongside 仅用于 init")
+    if args.stdin and (args.payload is not None or args.action not in ("init", "track", "update", "adopt")):
+        parser.error("--stdin 仅用于 init、track、update 或 adopt，且不能和位置参数一起使用。")
     raw = sys.stdin.buffer.read().decode("utf-8") if args.stdin else args.payload
     actor = uuid_text(os.environ.get("CODEX_THREAD_ID"))
-    if args.action == "show":
+    if args.action == "invocation":
+        import panel_onboarding
+        result = {"explicit": panel_onboarding.explicit_reference(actor, current_turn(actor))}
+    elif args.action in ("setup", "candidates", "adopt"):
+        import panel_onboarding
+        if args.action == "adopt":
+            result = panel_onboarding.adopt(actor, **json.loads(raw or "{}"))
+        else:
+            with readonly(panel_db()) if panel_db().is_file() else nullcontext() as db:
+                result = panel_onboarding.scope(actor, db, candidates=args.action == "candidates")
+    elif args.action == "show":
         result = snapshot(actor)
     elif args.action == "init":
-        result = initialize(actor, raw)
+        result = initialize(actor, raw, alongside=args.alongside)
     else:
         payload = json.loads(raw or "{}")
         if not isinstance(payload, dict):

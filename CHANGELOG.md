@@ -1,5 +1,37 @@
 # Thread for Codex · 版本记录 / Release notes
 
+## v1.3 · macOS
+
+[macOS v1.3（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.3/thread-for-codex-macos.zip) · [Windows v1.1.0（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip)
+
+### 中文
+
+- **首次设置总讨论。** 在输入框主动选中并发送 Thread for Codex 插件或主技能即可请求设置，原启动语依然可用。已有项目总讨论或当前串已有归属时，先请你选择。需要默认命名时采用 Codex 的项目显示名，组成「项目名 Director」，已有 Director 后缀只保留一个。项目名无法确认时用「项目总讨论」。保留你指定的名称、自定义标题和重复启用时的现名。
+- **接入已有聊天。** 首次登记后列出本机同项目中未归档、未配对的旧串，可跳过或逐项选择。接入与改名分别由你决定，接入后显示「待派工」。实际收到派工才计入项目用量。
+- **先决定由谁处理。** 总讨论在动手前按你点名的目标、既有分工和最近相关派工选串。已有唯一明确的答案可直接引用，你也可以明确要求总讨论亲自处理。
+- **执行串忙时排队。** 仅在确认目标空闲且无待启动、待排队任务时直发。独立任务遇到忙碌、已有队列或忙闲不明时，加入获授权、已配对的本机执行串原生队尾，等前项结束后另起一轮。同一笔入队重试复用队列记录。只有你明确要求立即补充同一在办任务时，才追加到当前回合。原有的派工回执现在显示「已排队」，并跟进实际执行回合。总讨论仍默认在派工后结束本轮，确认已有答复时沿用原串链接。
+- **右栏区分已回复与已完成。** 等待答复和受阻任务归到「等你回复」，排队和准备中的任务归到「待执行」。每条显示一行标题、最多两行摘要和时间，优先用本轮登记的进展或交付，缺少摘要时显示本轮任务首行。在标题旁的「⋯」菜单标为已完成，或在「已完成」中重新打开。重新打开回到「已回复」，保留摘要，收到新追问才开始任务。运行中、有排队项或状态未确认时暂不可手动标记。
+- **精简提示与交接。** 合并重复规则，首次设置和旧串操作按需读取，同串续派只交接本轮变化。相对 v1.3 精简前的草稿，每轮角色提示从 411 字符减至 295 字符，三份规则文档合计从 10,587 字符减至 6,713 字符。授权、队列、回执、状态和导航约定继续适用。尚无实际 Token 用量对比。
+
+解压 macOS ZIP 后运行 `python3 install.py`。安装元数据里的 `1.3.0` 对应对外版本及标签 `v1.3`。Windows 下载在 macOS v1.2.1 发布后已单独更新至 v1.1.0，本次继续提供该安装包。
+
+已有验证覆盖本机隔离环境中的入队、独立新回合和重复请求，以及面板状态相关检查。Codex 桌面端从点选插件到接入旧串、实际派工与右栏菜单点按尚未完成实测。v1.3 尚无 Windows 真机验证。
+
+### English
+
+- **Set up a main chat.** Select and send Thread for Codex or its main skill in the message box, or use the existing setup phrase. If the project already has a main chat or the current chat already has a role, the plugin asks you how to proceed. When a default title is needed, it uses the project name shown in Codex followed by a single “Director” suffix. If the project name is unclear, it uses “项目总讨论” (Project main chat). Explicit titles, custom titles, and titles on repeated setup are kept.
+- **Add existing chats.** After first setup, choose from unarchived local chats in the same project that are not already registered. You can skip the list or decide separately which chats to add and rename. An added chat appears under **待派工** (Ready for assignment). Usage starts counting with its first project assignment.
+- **Decide who handles the work before starting.** The main chat uses the thread you name, existing responsibilities, and recent related assignments to choose a worker. It can cite a single clear answer already on record, and you can ask it to handle the work itself.
+- **Queue independent tasks while a worker is busy.** The main chat sends work directly only after confirming the worker is idle with no pending or queued work. If it is busy, has work queued, or its availability is unclear, an independent task joins the tail of the authorized local worker's native queue and starts in its own turn. Retrying the same submission reuses the queue entry. An immediate addition to the active turn requires an explicit request to update that same task. The existing receipt now shows **已排队** (Queued) and tracks the actual worker turn. The main chat still ends its own turn by default after dispatch and links to confirmed replies.
+- **Distinguish replies from completed work in the sidebar.** Threads awaiting an answer or blocked appear under **等你回复** (Waiting for you). Queued and preparing work appears under **待执行** (Pending). Each row shows a title, up to two lines of summary, and a time. It uses the current turn's recorded progress or delivery, or the first line of the task when there is no summary. Use the **⋯** menu to mark a replied thread complete or reopen a completed one. Reopening returns it to **已回复** (Replied), keeps its summary, and waits for a follow-up before any work starts. Manual changes require an idle worker with a confirmed turn and no queued tasks.
+- **Shorter prompts and handoffs.** The rules remove repeated instructions, keep setup and chat management details available on demand, and pass along the changes for each follow-up. Compared with the earlier v1.3 draft, the per-turn role prompt went from 411 to 295 characters and the three rule files from 10,587 to 6,713 characters. The rules for authorization, the queue, receipts, status, and links still apply. Actual token usage has yet to be measured.
+
+Extract the macOS ZIP and run `python3 install.py`. The installer metadata shows `1.3.0` for the release and tag named `v1.3`. The separate Windows download moved to v1.1.0 after the macOS v1.2.1 release and remains available.
+
+Previous checks covered queueing, independent turns, and repeated requests in an isolated local environment, as well as sidebar status handling. The full desktop flow from selecting the plugin through adding chats, dispatching work, and using the sidebar menu has yet to be tested. v1.3 has yet to be tested on Windows.
+
+![v1.3 右栏使用示例数据 · v1.3 sidebar with fictional data](docs/images/panel-preview-v1.3.png)
+
 ## 1.2.1 · macOS
 
 [macOS v1.2.1（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-macos.zip) · [Windows v1.1.0（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip)

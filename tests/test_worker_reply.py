@@ -12,6 +12,25 @@ import worker_reply
 
 
 class WorkerReply(unittest.TestCase):
+    def test_selected_plugin_is_distinct_from_quoted_text(self):
+        import json
+        import sqlite3
+        from contextlib import closing
+        owner, turn = str(uuid4()), str(uuid4())
+        mention = {"type": "mention", "path": "plugin://codex-director@director-local"}
+        prompt = "[Thread for Codex](plugin://codex-director@director-local)"
+        event = {"session_id": owner, "turn_id": turn, "hook_event_name": "UserPromptSubmit", "prompt": prompt}
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, CODEX_HOME=directory):
+            with closing(sqlite3.connect(Path(directory)/"thread_history_1.sqlite")) as db:
+                db.execute("CREATE TABLE thread_items(thread_id,turn_id,item_type,rollout_ordinal,item_json)")
+                for number, selected in enumerate(([], [mention])):
+                    data = {"content": [{"type": "text", "text": prompt}, *selected]}
+                    db.execute("INSERT INTO thread_items VALUES(?,?,'userMessage',?,?)",
+                               (owner, turn, number, json.dumps(data)))
+                    db.commit()
+                    self.assertEqual(bool(worker_reply.hook_result(event)), bool(selected))
+            self.assertIsNone(worker_reply.hook_result(dict(event, turn_id=str(uuid4()))))
+
     def test_resume_and_once_only_correction(self):
         parent, worker, ordinary = [str(uuid4()) for _ in range(3)]
         footer = f'[← 返回总讨论](codex://threads/{parent})'

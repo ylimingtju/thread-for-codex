@@ -2,6 +2,7 @@
 import sqlite3
 from xml.sax.saxutils import escape
 
+import native_queue
 import panel_state as state
 
 
@@ -20,6 +21,10 @@ def reply_status(history, owner, worker, tool, prompt, sent_ms):
         ORDER BY i.rollout_ordinal LIMIT 1""", (
         worker, sent_ms, tool, template.format(owner, prompt), template.format(owner, escape(prompt)),
     )).fetchone()
+    return turn_status(inbound)
+
+
+def turn_status(inbound):
     if not inbound or inbound["completed_at"] is None:
         return "running"
     if inbound["status"] == "completed" and inbound["delivered"]:
@@ -50,7 +55,8 @@ def receipt(actor, key, turn_id=None):
             raise ValueError("尚未读取到总讨论本轮记录。")
         turn_id = state.uuid_text(turn_id or latest["turn_id"])
         busy = latest["status"] not in ("completed", "interrupted", "failed")
-        for tool in ("create_thread", "send_message_to_thread"):
+        queue_ids = set()
+        for tool in ("create_thread", "send_message_to_thread", "enqueue_task"):
             for args, result, sent_ms in state.dispatch_receipts(history, owner["id"], tool, turn_id):
                 prompt = args["prompt"]
                 if tool == "send_message_to_thread" and not prompt.startswith(state.DISPATCH_PREFIX):
@@ -70,9 +76,22 @@ def receipt(actor, key, turn_id=None):
                         except (ValueError, sqlite3.Error):
                             target = None  # The binding can become visible before its native thread.
                 status = "preparing" if not target else "running"
-                if target and not busy:
+                if target and tool == "enqueue_task":
+                    queue_id = result["queuedSubmissionId"]
+                    if queue_id in queue_ids:
+                        continue
+                    queue_ids.add(queue_id)
+                    turn = state.queued_turn(history, target, result["clientUserMessageId"])
+                    if turn:
+                        status = "running" if busy else turn_status(turn)
+                    else:
+                        status = "queued" if native_queue.pending(target, queue_id) else "unconfirmed"
+                elif target and not busy:
                     status = reply_status(history, owner["id"], target, tool, prompt, sent_ms)
-                rows.append({"thread_id": target, "title": worker["title"], "status": status, "sent_ms": sent_ms})
+                row = {"thread_id": target, "title": worker["title"], "status": status, "sent_ms": sent_ms}
+                if tool == "enqueue_task":
+                    row["task_title"] = prompt.partition("\n")[0][len(state.DISPATCH_PREFIX):].strip()
+                rows.append(row)
     native = state.native_threads([r["thread_id"] for r in rows if r.get("thread_id")])
     for row in rows:
         row["title"] = state.display_title(native.get(row.get("thread_id")), row["title"])
