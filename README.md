@@ -5,13 +5,20 @@ Inspired by Claude Projects, Thread for Codex lets you delegate tasks from one p
 
 中文 · [English](README.en.md)
 
-**[下载 macOS v1.1.0（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-macos.zip)** · **[下载 Windows v1.0.4（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)** · [安装说明](#安装与启动)
+| 系统 | 可下载版本 | 安装包 |
+| --- | --- | --- |
+| macOS | **v1.2.1** | [下载 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-macos.zip) |
+| Windows | **v1.1.0** | [下载 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip) |
 
-macOS v1.1.0 已发布。Windows 当前发行版为 v1.0.4，v1.1.0 将在 momo-land 完成 Windows 真机确认后发布。[v1.1.0 使用指南、实测海报与常见问题](docs/release-v1.1.0.md#zh)
+[安装说明](#安装与启动) · [v1.2.1 更新说明](https://github.com/ylimingtju/thread-for-codex/releases/tag/v1.2.1) · [早期版本实测与常见问题](docs/release-v1.1.0.md#zh)
 
-![三股彩线从同一个线轴延伸开来](docs/images/threads-cover.jpg)
+![Thread for Codex：主线统筹，分线追问](docs/images/github-cover.jpg)
 
-Thread for Codex 是适用于 macOS 和 Windows 的 Codex 项目讨论串插件。比如做一份城市步行指南，可以在总讨论里定方向，让一个串规划路线、另一个串核对地图。路线串需要你选河畔还是老城时，问题会直接出现在右侧。点标题答复，再回总讨论看汇总。
+**项目介绍视频（8 秒）**
+
+https://github.com/user-attachments/assets/1d1d60cf-e0bc-42ef-a01a-5aa561a90f22
+
+Thread for Codex 是适用于 macOS 和 Windows 的 Codex 项目讨论串插件。比如做一份城市步行指南，可以在总讨论里定方向，让一个串规划路线、另一个串核对地图。路线串需要你选河畔还是老城时，问题会直接出现在右侧。点标题即可在原串答复。
 
 ![浅色面板显示待答问题和进展，深色面板展开各模型的用量](docs/images/panel-preview.png)
 
@@ -21,7 +28,7 @@ Thread for Codex 是适用于 macOS 和 Windows 的 Codex 项目讨论串插件�
 
 需要已登录的 Codex 桌面端、支持 `codex plugin` 的 Codex 命令行，以及 Python 3.9 或以上。Python 部分只使用标准库。
 
-1. 从上方下载对应系统的 ZIP 并解压。使用 Git 的用户请检出对应的发布标签（macOS 为 `v1.1.0`，Windows 为 `v1.0.4`）。在源码根目录运行对应命令。macOS 用户请选一个准备长期保留的目录。
+1. 从上方下载对应系统的 ZIP 并解压。macOS 也可用 Git 检出标签 `v1.2.1`。Windows ZIP 使用经过 Windows 11 测试的提交 `5bd50f4`。在源码根目录运行对应命令。macOS 用户请选一个准备长期保留的目录。
 
    | 系统 | 安装命令 |
    | --- | --- |
@@ -30,19 +37,21 @@ Thread for Codex 是适用于 macOS 和 Windows 的 Codex 项目讨论串插件�
 
    Windows 上也可用 `python .\install.py`，或使用已有 Python 的完整路径，例如 `& 'C:\Python312\python.exe' .\install.py`。安装器优先使用 Microsoft Store 版 Codex 自带的命令行，再查找 PATH 中的 `codex.exe` 和常见的独立安装路径。也可以加 `--codex 'C:\path\to\codex.exe'` 手动指定。
 
-2. 打开新项目或已有项目，进入想用作总讨论的聊天，发送：
+2. 推荐每个项目只设一个总讨论，其余聊天用作执行串。在新项目或旧项目中，进入选定的聊天并发送下面这句话。
 
    ```text
    将此线程作为该项目的总讨论。
    ```
 
-3. 接着说具体任务，例如「让路线串列出两个周末方案，让地图串核对沿途站点」。总讨论首次启动时会置顶，并打开右侧的「项目讨论串」。以后可以从总讨论里的同名入口重新打开。
+   在 macOS v1.2.1 中，首次设置总讨论时，新聊天的空白或默认标题会改为「项目名 Director」。已经自定义的标题会保留，你也可以在启动时直接指定名称。
 
-问「路线串上次推荐了哪条路」，总讨论会概括已有答复。说「下雨了，请重新选一条路」，总讨论会交回路线串，再汇总这次的结论。完整答复和后续追问都在原串。
+3. 接着说具体任务，例如「让路线串列出两个周末方案，让地图串核对沿途站点」。总讨论首次启动时会置顶，并打开右侧的「项目讨论串」。在 macOS v1.2.1 中，点总讨论新答复末尾的「打开项目讨论串」可重新打开右侧面板，首次点击时 Codex 可能询问用哪个插件打开。点执行串答复末尾的「← 返回总讨论」即可回去。
+
+问「路线串上次推荐了哪条路」，总讨论会概括已有答复。在 macOS v1.2.1 中，说「下雨了，请重新选一条路」，总讨论会交回路线串。派工后你可以继续安排其他事。路线串给出答复后，聊天里的派工回执会在总讨论空闲时显示原串链接。明确说「等结果」时总讨论才会等待。需要总讨论整理答复时，可以请它汇总或比较。
 
 新建总讨论时，如果你没有选择推理强度，插件默认使用 `xhigh`（模型支持时）。已有聊天沿用当前设置。你可以随时调整强度，各档都能正常派工、追问和验收。
 
-升级时，从上方下载适用于本系统的新版本，解压后在源码根目录重新运行安装命令。Git 用户可用 `git fetch --tags` 获取标签，检出本系统已发布的版本后安装。Windows 安装器会在 Codex 数据目录下生成本机插件源，并记录安装所用的 Python 路径。移动或更换 Python 后，用新路径重新运行安装程序。
+升级时，从上方下载本系统的安装包，解压后在源码根目录重新运行安装命令。macOS Git 用户可用 `git fetch --tags` 获取标签，再检出下载表中的 macOS 版本。macOS v1.2.1 安装后，请在 Codex「设置 → Hooks」审查并信任插件的三条规则，然后在当前任务结束后退出并重新打开 Codex。已有执行串可以直接追问。Windows 安装器会在 Codex 数据目录下生成本机插件源，并记录安装所用的 Python 路径。移动或更换 Python 后，用新路径重新运行安装程序。
 
 ## 在侧栏里能做什么
 

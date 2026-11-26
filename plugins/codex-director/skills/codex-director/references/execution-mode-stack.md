@@ -17,4 +17,4 @@ Use [dynamic workflow](dynamic-workflow-integration.md) for an explicitly reques
 
 ## Completion Rule
 
-Match the actual worker reply to this assignment. A complete identified final reply is sufficient for ordinary work. Resolve a missing, clipped, contradictory, or older reply using the narrowest relevant source. Summarize findings, decisions, and material gaps in the main chat. Keep the original reply in the worker chat and retain it for follow-up. Archive only on the user's instruction.
+Match the actual worker reply to this assignment. A complete identified final reply is sufficient for ordinary work. Resolve a missing, clipped, contradictory, or older reply using the narrowest relevant source. Follow the Director skill's reply rules. For a question sent to a worker, default to the answering chat's name and link once its reply is confirmed. Keep the original reply in the worker chat and retain it for follow-up. Archive only on the user's instruction.

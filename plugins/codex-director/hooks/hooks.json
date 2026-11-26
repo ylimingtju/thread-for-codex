@@ -11,6 +11,31 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B \"$PLUGIN_ROOT/worker_reply.py\"",
+            "commandWindows": "python -B -X utf8 (Join-Path $env:PLUGIN_ROOT 'worker_reply.py')",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B \"$PLUGIN_ROOT/worker_reply.py\"",
+            "commandWindows": "python -B -X utf8 (Join-Path $env:PLUGIN_ROOT 'worker_reply.py')",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }

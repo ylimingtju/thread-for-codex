@@ -1,12 +1,72 @@
 # Thread for Codex · 版本记录 / Release notes
 
-## 1.1.0 · macOS
+## 1.2.1 · macOS
 
-[下载 macOS v1.1.0 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-macos.zip) · [下载 Windows v1.0.4 / Download for Windows](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.0.4/thread-for-codex.zip)
+[macOS v1.2.1（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-macos.zip) · [Windows v1.1.0（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip)
 
-Windows 当前发行版为 v1.0.4。momo-land 完成真机确认后再发布 Windows v1.1.0。 [更新说明、macOS 实测与使用指南](docs/release-v1.1.0.md#zh)
+### 中文
 
-Windows stays on v1.0.4 until momo-land confirms v1.1.0 on a Windows machine. [Release notes, macOS benchmarks and user guide](docs/release-v1.1.0.md#en)
+- **首次设置总讨论时自动命名。** 新聊天的标题为空、是默认占位名或仅复述启动语时，用「项目名 Director」。无法确认项目名时用「项目总讨论」。用户指定的标题优先，已有自定义标题保留，重复启用沿用现名。
+- 中英文首页分别标明 macOS 和 Windows 可下载的版本，并在封面下方加入项目介绍视频。
+
+### English
+
+- **Name a main chat on first setup.** If the new chat has no title, has a default title, or just repeats the setup request, the plugin uses “Project Name Director.” If it cannot identify the project, it uses “项目总讨论” (Project main chat). A title you specify takes priority. Existing custom titles are kept, and repeated setup keeps the current title.
+- Both READMEs list one downloadable version per platform and show the project introduction video beneath the cover.
+
+## 1.2.0 · macOS
+
+[下载 macOS v1.2.0 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.0/thread-for-codex-macos.zip)
+
+### 中文
+
+- **派工后可以接着安排工作。** 总讨论发出任务并登记后默认结束本轮，明确要求等待时才持续跟进。执行串答完后，原串链接显示在聊天中的派工回执里。总讨论正忙时，回执等当前轮结束后更新。总讨论可直接引用已有答案，调查、新判断和文件修改交给执行串。
+- **在原串查看答复。** 总讨论把问题交给执行串后，收到本轮答复时默认只提供执行串名称和链接。明确要求汇总或比较时，总讨论再整理答复。
+- **右侧面板采用透明玻璃分组。** 浅色与深色跟随 Codex 主题。「等你回复」「进行中」「已完成」分别用黄、蓝、绿区分。底部的 Token 用量默认收起，展开可查看各模型的用量和占比。累计范围提示已移除，数字以大写 K 或 M 缩写，最多保留一位小数。
+- **减少重复处理。** 派工记录的读取及来源、目标核对使用同一套逻辑。任务列表不变时沿用原分组，用量可以独立更新。任务组与用量区复用折叠样式。
+
+升级时解压 macOS 安装包并运行 `python3 install.py`。在 Codex「设置 → Hooks」审查并信任插件的三条规则，当前任务结束后重启 Codex。
+
+### English
+
+- **Keep working after assigning a task.** Once the main chat sends and registers an assignment, it ends the turn by default. Ask it to wait when you need the result before continuing. The assignment receipt shows the worker chat link when the reply is ready and the main chat is idle. The main chat can answer from existing results and delegates investigation, new judgments, and file changes.
+- **Read answers in the original chat.** After delegating a question and receiving the reply, the main chat provides the worker chat’s name and link by default. Ask the main chat to summarize or compare replies when needed.
+- **Transparent task groups in the side panel.** The panel follows the Codex light or dark theme. Yellow, blue, and green distinguish threads waiting for you, in progress, and complete. The token usage row at the bottom starts collapsed. Expand it to see counts and shares by model. The time-range note has been removed, and counts use uppercase K or M with up to one decimal place.
+- **Less repeated work.** The dispatch code shares the logic for reading records and checking their source and target. The panel keeps the current groups when the task list stays the same and updates usage independently. Task groups and the usage row share the same disclosure styles.
+
+To update, extract the macOS ZIP and run `python3 install.py`. Review and trust the plugin's three hooks under Settings → Hooks, then restart Codex after your active tasks finish.
+
+![浅色和深色面板，使用示例数据 · Light and dark panel with fictional data](docs/images/panel-preview.png)
+
+## 1.1.1 · macOS
+
+[下载 macOS v1.1.1 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.1/thread-for-codex-macos.zip)
+
+### 中文
+
+- **从新答复打开面板。** 总讨论每条新答复末尾都有「打开项目讨论串」。在支持插件链接的 Codex 桌面端，点击即可查看当前总讨论的任务。首次点击时，Codex 可能询问用哪个插件打开。
+- 此前仅在本机试用的旧版文件查看器方案已撤回。如果右侧出现两个同名标签，可以关闭多余的标签，保留正在使用的一个。
+- **直接在旧执行串追问。** 已登记的执行串在恢复时按聊天 ID 找回所属总讨论，新答复末尾附「← 返回总讨论」。无需重新派工。**强烈建议每个项目只设一个总讨论**，其余聊天用作执行串。
+- **补正时保留完整答复。** 正确的末行链接只在本机检查。缺失或指向错误时，插件最多请求模型补正一次，要求保留完整正文和成果链接。如果总讨论只读到补充的链接，会回原串取完整交付再汇总。
+
+升级后，在「设置 → Hooks」审查并信任本插件的 `SessionStart`、`UserPromptSubmit` 和 `Stop`。当前任务结束后，退出并重新打开 Codex，让已有聊天载入更新。[Codex Hooks 说明](https://learn.chatgpt.com/docs/hooks#stop)
+
+### English
+
+- **Open the panel from a new reply.** Each new main-chat reply ends with **打开项目讨论串** (Open project threads). Select it to see that chat’s tasks on the right in a Codex desktop version that supports plugin links. Codex may ask which plugin to use on first click.
+- The older file-viewer approach was tried only locally and has been withdrawn. If two tabs with the same name appear on the right, you can close the extra tab and keep the one you’re using.
+- **Follow up in an existing worker chat.** When a registered worker resumes, the plugin looks up its main chat by ID and adds **← 返回总讨论** (Back to main chat) to new replies. You can continue in the same chat without a new assignment. **We strongly recommend one main chat per project.**
+- **Keep the full answer when correcting a link.** A correct final link needs only a local check. For a missing or incorrect link, the plugin asks for at most one correction, with the full answer and its deliverable links. If the main chat receives only a link, it reads the worker’s full reply before summarizing.
+
+After upgrading, review and trust the plugin’s `SessionStart`, `UserPromptSubmit`, and `Stop` hooks under Settings → Hooks. When your active tasks finish, quit and reopen Codex to load the update in existing chats. [Codex hook reference](https://learn.chatgpt.com/docs/hooks#stop)
+
+## 1.1.0 · macOS / Windows
+
+[下载 macOS v1.1.0 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-macos.zip) · [下载 Windows v1.1.0 / Download for Windows](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip)
+
+Windows 安装包来自提交 `5bd50f4`。安装、升级和返回链接已有 Windows 11 测试记录，登录桌面后的人工点按仍待确认。[更新说明、测试记录与使用指南](docs/release-v1.1.0.md#zh)
+
+The Windows ZIP uses commit `5bd50f4`. Installation, upgrades, and worker return links were tested on Windows 11. A click-through in the signed-in desktop app is pending. [Release notes, test results, and user guide](docs/release-v1.1.0.md#en)
 
 总讨论直接回答有明确出处的已有结论，把需要新判断或修改的工作分派给执行串。续派时沿用原串上下文，回报时概括本轮结果并保留原串入口。九个专项技能仍可按需调用，普通派工省去流程声明和重复记录。新旧执行串在每条面向用户的答复末尾提供「← 返回总讨论」链接。
 

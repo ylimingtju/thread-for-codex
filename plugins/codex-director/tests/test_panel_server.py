@@ -18,6 +18,28 @@ def check():
     assert server.TOOLS['show_panel']['_meta']['openai/ui']['entrypoints'] == [{'type': 'thread'}]
     assert server.TOOLS['open_thread']['_meta']['ui']['visibility'] == ['app']
     assert panel['mimeType'] == server.MIME and '__DIRECTOR_' not in panel['text']
+    link = server.panel_state.PANEL_LINK
+    meta = server.TOOLS['open_panel_link']['_meta']
+    assert meta['ui'] == {'resourceUri': server.PANEL, 'visibility': ['app']}
+    assert meta['openai/ui']['entrypoints'] == [{'type': 'deepLink', 'patterns': [link]}]
+    request = {'name': 'open_panel_link', 'arguments': {'url': link}, '_meta': {'threadId': director}}
+    with patch.object(server.panel_state, 'snapshot', return_value={**data, 'role': 'director'}) as read:
+        assert server.handle('tools/call', request)['structuredContent']['director_id'] == director
+        read.assert_called_once_with(actor=director, view_key=None, include_usage=True)
+        read.reset_mock()
+        assert server.call({**request, '_meta': {}})['isError']
+        for args in ({'url': link + '?director=' + director}, {'url': link, 'view_key': 'other'}, {}):
+            try:
+                server.call({**request, 'arguments': args})
+            except server.ProtocolError as exc:
+                assert exc.code == -32602
+            else:
+                raise AssertionError('unexpected panel link accepted')
+        read.assert_not_called()
+        assert server.call({**request, '_meta': {'threadId': other}})['isError']
+        read.return_value = data
+        denied = server.call({**request, '_meta': {'threadId': worker}})
+        assert denied['isError'] and 'structuredContent' not in denied
     with patch.object(server.sys, 'platform', 'darwin'), patch.object(
         server.panel_state, 'snapshot', return_value=data
     ) as read, patch.object(subprocess, 'run') as launch:

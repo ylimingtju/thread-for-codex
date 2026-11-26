@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "plugins" / "codex-director"))
 from install import PLUGIN, _windows_file_path, windows_marketplace
 import panel_state as state
+import panel_server
 
 
 def create_indexes(directory, threads):
@@ -45,31 +46,99 @@ class PanelLifecycle(unittest.TestCase):
     def test_worker_reply_footer(self):
         director, worker, ordinary = (str(uuid4()) for _ in range(3))
         script = Path(state.__file__).with_name("worker_reply.py")
+        footers = {
+            director: f"[打开项目讨论串]({state.PANEL_LINK})",
+            worker: f"[← 返回总讨论](codex://threads/{director})",
+        }
         with tempfile.TemporaryDirectory(prefix="Director's 测试 ") as directory, patch.dict(
             environ, CODEX_HOME=directory
         ):
             env = dict(environ)
-            command = [sys.executable, "-B", str(script)]
+            windows_hooks = None
             if sys.platform == "win32":
                 plugin = windows_marketplace() / PLUGIN
-                hooks = json.loads((plugin / "hooks/hooks.json").read_text(encoding="utf-8"))
-                hook = hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]["commandWindows"]
-                command = ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", hook]
+                windows_hooks = json.loads((plugin / "hooks/hooks.json").read_text(encoding="utf-8"))["hooks"]
                 env["PLUGIN_ROOT"] = str(plugin)
             with state.write_registry() as db:
                 db.execute("INSERT INTO directors VALUES(?, 'Project', 'main-key')", (director,))
                 db.execute("""INSERT INTO workers(director, thread_id, view_key, title, status, summary, updated)
                               VALUES(?, ?, 'worker-key', 'Task', 'completed', 'Done', 1)""", (director, worker))
-            for actor in (worker, director, ordinary):
-                event = {"hook_event_name": "UserPromptSubmit", "session_id": actor, "prompt": "Continue"}
-                output = subprocess.check_output(command, input=json.dumps(event),
-                                                 encoding="utf-8", env=env, timeout=10)
-                if actor == worker:
-                    footer = f"[← 返回总讨论](codex://threads/{director})"
-                    context = json.loads(output)["hookSpecificOutput"]["additionalContext"]
-                    self.assertEqual(context.splitlines()[-1], footer)
-                else:
-                    self.assertEqual(output, "")
+            events = {
+                "SessionStart": {"source": "resume"},
+                "UserPromptSubmit": {"prompt": "Continue"},
+                "Stop": {"stop_hook_active": False, "last_assistant_message": "任务完成。"},
+            }
+            for name, fields in events.items():
+                command = [sys.executable, "-B", str(script)]
+                if windows_hooks is not None:
+                    hook = windows_hooks[name][0]["hooks"][0]["commandWindows"]
+                    command = ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", hook]
+                for actor in (worker, director, ordinary):
+                    with self.subTest(event=name, actor=actor):
+                        event = {"hook_event_name": name, "session_id": actor, **fields}
+                        output = subprocess.check_output(command, input=json.dumps(event),
+                                                         encoding="utf-8", env=env, timeout=10)
+                        if actor == ordinary:
+                            self.assertEqual(output, "")
+                            continue
+                        result = json.loads(output)
+                        if name == "Stop":
+                            self.assertEqual(result["decision"], "block")
+                            self.assertTrue(result["reason"].endswith(footers[actor]))
+                        else:
+                            context = result["hookSpecificOutput"]["additionalContext"]
+                            self.assertEqual(context.splitlines()[-1], footers[actor])
+
+    def test_inline_receipt_waits_for_idle_and_matches_the_original_dispatch(self):
+        owner, worker, dispatch, followup, response = [str(uuid4()) for _ in range(5)]
+        prompt = "【Director 派工】核对修改稿"
+        envelope = f"<codex_delegation>\n  <source_thread_id>{owner}</source_thread_id>\n  <input>{prompt}</input>\n</codex_delegation>"
+        with tempfile.TemporaryDirectory() as directory, patch.dict(environ, CODEX_HOME=directory):
+            create_indexes(directory, [(owner, "user", "总讨论"), (worker, "agent_created_thread", "审核串")])
+            with state.write_registry() as db:
+                db.execute("INSERT INTO directors VALUES(?, '总讨论', 'main')", (owner,))
+                db.execute("INSERT INTO workers VALUES(?,?,NULL,'worker','审核串','running','',0,NULL)", (owner, worker))
+            with closing(sqlite3.connect(Path(directory) / "thread_history_1.sqlite")) as db:
+                def turn(thread, turn_id, status, started, ended, final=None):
+                    db.execute("INSERT INTO thread_turns VALUES(?,?,?,?,?,?,?)",
+                               (thread, turn_id, status, started, ended, started, final))
+
+                def item(thread, turn_id, item_id, kind, fields, ms):
+                    db.execute("INSERT INTO thread_items VALUES(?,?,?,?,?,?,?,?,?)",
+                               (thread, turn_id, item_id, kind, json.dumps(fields), ms, ms, ms, ms))
+
+                turn(owner, dispatch, "inProgress", 3, None)
+                item(owner, dispatch, "sent", "mcpToolCall", {
+                    "server": "codex_app", "tool": "send_message_to_thread", "status": "completed",
+                    "arguments": json.dumps({"threadId": worker, "prompt": prompt}),
+                    "result": {"content": [{"type": "text", "text": json.dumps({"threadId": worker})}]}
+                }, 3001)
+                turn(worker, "old", "completed", 1, 2, "old-final")
+                item(worker, "old", "old-final", "agentMessage", {"phase": "final_answer", "text": "旧答案"}, 2000)
+                db.commit()
+                show = {"name": "show_receipt", "arguments": {"view_key": "main"}, "_meta": {"threadId": owner}}
+                seed = panel_server.call(show)["structuredContent"]
+                self.assertEqual(seed["receipt_turn"], dispatch)
+                read = {**show, "name": "snapshot", "arguments": {"view_key": "main", "receipt_turn": dispatch}}
+                self.assertTrue(panel_server.call({**read, "_meta": {"threadId": worker}})["isError"])
+                def status():
+                    return panel_server.call(read)["structuredContent"]["threads"][0]["status"]
+                self.assertEqual(status(), "running")
+                turn(worker, response, "completed", 4, 6, "answer")
+                item(worker, response, "incoming", "functionCallOutput", {
+                    "namespace": "codex_app", "name": "send_message_to_thread", "output": envelope}, 4000)
+                item(worker, response, "answer", "agentMessage", {"phase": "final_answer", "text": "本轮答复"}, 6000)
+                db.execute("UPDATE thread_turns SET status='completed',completed_at=4 WHERE turn_id=?", (dispatch,))
+                turn(owner, followup, "inProgress", 5, None)
+                turn(worker, str(uuid4()), "inProgress", 7, None)
+                db.commit()
+                self.assertEqual(status(), "running")
+                db.execute("UPDATE thread_turns SET status='completed',completed_at=8 WHERE turn_id=?", (followup,))
+                db.commit()
+                final = panel_server.call(read)["structuredContent"]
+                self.assertTrue(final["finished"])
+                self.assertEqual((final["threads"][0]["thread_id"], final["threads"][0]["status"]), (worker, "review"))
+                self.assertEqual(panel_server.call(read)["structuredContent"], final)
 
     def test_utf8_payload_over_stdin(self):
         root = str(uuid4())
