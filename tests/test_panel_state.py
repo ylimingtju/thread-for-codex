@@ -11,7 +11,10 @@ import unittest
 from unittest.mock import patch
 from uuid import uuid4
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "plugins" / "codex-director"))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "plugins" / "codex-director"))
+from install import PLUGIN, _windows_file_path, windows_marketplace
 import panel_state as state
 import panel_server
 
@@ -28,25 +31,63 @@ def create_indexes(directory, threads):
 
 
 class PanelLifecycle(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "win32", "Windows marketplace paths")
+    def test_restage_marketplace_with_long_paths(self):
+        temp_root = Path(tempfile.gettempdir()).resolve()
+        with tempfile.TemporaryDirectory(dir=_windows_file_path(temp_root)) as directory:
+            profile = temp_root / Path(directory).name / ("profile-" + "x" * 105)
+            with patch.dict(environ, CODEX_HOME=str(profile)):
+                market = windows_marketplace()
+                self.assertEqual(windows_marketplace(), market)
+            self.assertEqual(list(market.parent.glob("marketplace-*")), [])
+            installed = _windows_file_path(market) / PLUGIN
+            self.assertTrue((installed / "worker_reply.py").is_file())
+
     def test_worker_reply_footer(self):
         director, worker, ordinary = (str(uuid4()) for _ in range(3))
         script = Path(state.__file__).with_name("worker_reply.py")
-        with tempfile.TemporaryDirectory() as directory, patch.dict(environ, CODEX_HOME=directory):
+        footers = {
+            director: f"[打开项目讨论串]({state.PANEL_LINK})",
+            worker: f"[← 返回总讨论](codex://threads/{director})",
+        }
+        with tempfile.TemporaryDirectory(prefix="Director's 测试 ") as directory, patch.dict(
+            environ, CODEX_HOME=directory
+        ):
+            env = dict(environ)
+            windows_hooks = None
+            if sys.platform == "win32":
+                plugin = windows_marketplace() / PLUGIN
+                windows_hooks = json.loads((plugin / "hooks/hooks.json").read_text(encoding="utf-8"))["hooks"]
+                env["PLUGIN_ROOT"] = str(plugin)
             with state.write_registry() as db:
                 db.execute("INSERT INTO directors VALUES(?, 'Project', 'main-key')", (director,))
                 db.execute("""INSERT INTO workers(director, thread_id, view_key, title, status, summary, updated)
                               VALUES(?, ?, 'worker-key', 'Task', 'completed', 'Done', 1)""", (director, worker))
-            for actor in (worker, director, ordinary):
-                event = {"hook_event_name": "UserPromptSubmit", "session_id": actor, "prompt": "Continue"}
-                output = subprocess.check_output([sys.executable, "-B", str(script)],
-                                                 input=json.dumps(event), encoding="utf-8")
-                if actor != ordinary:
-                    footer = (f"[← 返回总讨论](codex://threads/{director})" if actor == worker
-                              else f"[打开项目讨论串]({state.PANEL_LINK})")
-                    context = json.loads(output)["hookSpecificOutput"]["additionalContext"]
-                    self.assertEqual(context.splitlines()[-1], footer)
-                else:
-                    self.assertEqual(output, "")
+            events = {
+                "SessionStart": {"source": "resume"},
+                "UserPromptSubmit": {"prompt": "Continue"},
+                "Stop": {"stop_hook_active": False, "last_assistant_message": "任务完成。"},
+            }
+            for name, fields in events.items():
+                command = [sys.executable, "-B", str(script)]
+                if windows_hooks is not None:
+                    hook = windows_hooks[name][0]["hooks"][0]["commandWindows"]
+                    command = ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", hook]
+                for actor in (worker, director, ordinary):
+                    with self.subTest(event=name, actor=actor):
+                        event = {"hook_event_name": name, "session_id": actor, **fields}
+                        output = subprocess.check_output(command, input=json.dumps(event),
+                                                         encoding="utf-8", env=env, timeout=10)
+                        if actor == ordinary:
+                            self.assertEqual(output, "")
+                            continue
+                        result = json.loads(output)
+                        if name == "Stop":
+                            self.assertEqual(result["decision"], "block")
+                            self.assertTrue(result["reason"].endswith(footers[actor]))
+                        else:
+                            context = result["hookSpecificOutput"]["additionalContext"]
+                            self.assertEqual(context.splitlines()[-1], footers[actor])
 
     def test_inline_receipt_waits_for_idle_and_matches_the_original_dispatch(self):
         owner, worker, dispatch, followup, response = [str(uuid4()) for _ in range(5)]
