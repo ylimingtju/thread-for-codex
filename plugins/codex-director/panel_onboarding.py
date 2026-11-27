@@ -139,7 +139,7 @@ def scope(actor, registry, *, candidates=False):
     return result
 
 
-def adopt(actor, *, thread_id, title, project_id):
+def adopt(actor, *, thread_id, title, project_id, role=None):
     actor, thread_id = state.uuid_text(actor), state.uuid_text(thread_id)
     listed, _ = listed_threads(actor)
     ids = (actor, thread_id)
@@ -160,4 +160,6 @@ def adopt(actor, *, thread_id, title, project_id):
         if not state.find_worker(db, actor, thread_id, None):
             db.execute("INSERT INTO workers VALUES(?,?,NULL,?,?,'ready','',?,NULL)",
                        (actor, thread_id, secrets.token_urlsafe(24), state.label(title, 240), time.time()))
+        if role is not None:
+            state._upsert_worker_role(db, actor, thread_id, role, time.time())
     return state.snapshot(actor)

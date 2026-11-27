@@ -29,6 +29,62 @@ def create_indexes(directory, threads):
 
 
 class PanelLifecycle(unittest.TestCase):
+    def test_worker_sync_rev_and_delta(self):
+        owner, worker, sibling, outsider = (str(uuid4()) for _ in range(4))
+        with tempfile.TemporaryDirectory() as directory, patch.dict(environ, CODEX_HOME=directory):
+            create_indexes(directory, [(uid, "user", name) for uid, name in
+                                      [(owner,"总讨论"),(worker,"实现"),(sibling,"复核"),(outsider,"其他项目")]])
+            with state.write_registry() as db:
+                db.executemany("INSERT INTO directors VALUES(?,?,?)", [(owner,"总讨论","d"),(outsider,"其他项目","o")])
+                db.executemany("INSERT INTO workers VALUES(?,?,NULL,?,?,'ready','',0,NULL)",
+                               [(owner,worker,"w","实现"),(owner,sibling,"s","复核")])
+            self.assertIsNone(state.sync_context_for_worker(worker))
+            state.upsert_decision(outsider, content="其他项目保密")
+            state.set_worker_role(owner, thread_id=worker, role="程序维护")
+            state.set_worker_roles(owner,[{"thread_id":sibling,"role":"核对证明"}])
+            decision = state.upsert_decision(owner, content="使用新基准",source_thread_id=sibling)["decisions"][0]
+            first = state.sync_context_for_worker(worker)
+            for phrase in ("首次同步","本串分工：程序维护","复核：核对证明","使用新基准"):
+                self.assertIn(phrase,first)
+            self.assertNotIn("其他项目保密",first)
+            state.set_worker_role(owner, thread_id=worker, role="程序维护")
+            state.upsert_decision(owner, id=decision["id"], content="使用新基准", source_thread_id=sibling)
+            with patch.object(state,"write_registry",side_effect=AssertionError("无变更不应写库")):
+                self.assertIsNone(state.sync_context_for_worker(worker))
+            state.upsert_decision(owner,id=decision["id"],content="改用第二版",source_thread_id=worker)
+            state.set_worker_role(owner,thread_id=sibling,role="第一次修订")
+            state.set_worker_role(owner,thread_id=sibling,role="最终分工")
+            state.delete_decision(owner,id=decision["id"])
+            delta=state.sync_context_for_worker(worker)
+            self.assertIn("共识更新",delta)
+            self.assertIn("原决定「改用第二版」已废止",delta)
+            self.assertIn("最终分工",delta)
+            self.assertNotIn("第一次修订",delta)
+            self.assertNotIn("已确认决定：",delta)
+            for index in range(32):
+                state.set_worker_role(owner,thread_id=sibling,role=f"版本 {index}")
+            self.assertIn("以当前分工和决定为准",state.sync_context_for_worker(worker))
+            with state.readonly(state.panel_db()) as db:
+                self.assertEqual(db.execute("SELECT count(*) FROM sync_log WHERE director=?",(owner,)).fetchone()[0],30)
+            with state.write_registry() as db:
+                for table in ("project_revisions","worker_sync","sync_log"):
+                    db.execute("DROP TABLE "+table)
+            self.assertIsNone(state.sync_context_for_worker(worker))
+            with state.write_registry():
+                pass
+            self.assertIn("版本 31",state.sync_context_for_worker(worker))
+
+    def test_review_summary_uses_final_answer_excerpt(self):
+        row = {"status":"review","summary":"派工摘要","updated":2,"turn_id":"current","thread_id":"worker"}
+        turn = {"status":"completed","turn_id":"current","started_at":1,"completed_at":2,"delivered":True,
+                "previous_start":None,"request":"请复核模型","final_answer":"\n## 已修正边界\n\n共两处。\n\n"
+                "[← 返回总讨论](codex://threads/1234-abcd)"}
+        self.assertEqual(state.observed(row,turn,None)[:2], ("review","已修正边界 共两处。"))
+        self.assertEqual(state.observed(dict(row,status="waiting",summary="用哪个版本？"),turn,None)[1],"用哪个版本？")
+        self.assertEqual(state.observed(dict(row,status="waiting",summary=turn["request"]),turn,None)[1],"已修正边界 共两处。")
+        self.assertEqual(state.observed(row,dict(turn,final_answer="[↩ 返回项目总讨论](codex://threads/1234-abcd)"),None)[1],
+                         "派工摘要")
+
     def test_worker_reply_footer(self):
         director, worker, ordinary = (str(uuid4()) for _ in range(3))
         script = Path(state.__file__).with_name("worker_reply.py")
@@ -147,6 +203,8 @@ class PanelLifecycle(unittest.TestCase):
                            (worker, new, json.dumps({"phase": "final_answer", "text": "B 的答复"})))
                 db.commit()
                 self.assertEqual(state.latest_forwards(owner)[worker], (5, "独立任务 B"))
+                queued = state.snapshot(owner)["threads"][0]
+                self.assertEqual(queued["latest_assignment_at"], "1970-01-01T00:00:02+00:00")
                 self.assertEqual(panel_server.call(read)["structuredContent"]["threads"][0]["status"], "review")
 
     def test_manual_status_changes_only_the_current_idle_worker_turn(self):
@@ -175,14 +233,14 @@ class PanelLifecycle(unittest.TestCase):
             def current():
                 return state.snapshot(owner)["threads"][0]
 
-            self.assertEqual((current()["status_turn_id"], current()["summary"]), (first, "已核对两处定义"))
+            self.assertEqual((current()["status_turn_id"], current()["summary"]), (first, "本轮答复"))
             self.assertNotIn("status_turn_id", state.snapshot(view_key="owner-key")["threads"][0])
             self.assertNotIn("status_turn_id", state.snapshot(worker)["threads"][0])
             for actor in (None, worker, other):
                 self.assertTrue(action("completed", actor)["isError"])
             self.assertTrue(action("completed", hostId="ssh-test")["isError"])
             self.assertEqual(action("completed")["structuredContent"]["status"], "completed")
-            self.assertEqual((current()["status"], current()["summary"]), ("completed", "已核对两处定义"))
+            self.assertEqual((current()["status"], current()["summary"]), ("completed", "本轮答复"))
             with self.assertRaises(ValueError):
                 state.update(worker, status="review", summary="补交说明")
 
@@ -193,7 +251,7 @@ class PanelLifecycle(unittest.TestCase):
             with closing(sqlite3.connect(queue_path)) as queue, queue:
                 queue.execute("DELETE FROM queued_items")
             self.assertEqual(action("review")["structuredContent"]["status"], "review")
-            self.assertEqual((current()["status"], current()["summary"]), ("review", "已核对两处定义"))
+            self.assertEqual((current()["status"], current()["summary"]), ("review", "本轮答复"))
             self.assertEqual(action("completed")["structuredContent"]["status"], "completed")
             with closing(sqlite3.connect(history_path)) as history, history:
                 history.execute("INSERT INTO thread_turns VALUES(?,?,'inProgress',3,NULL,2,NULL)", (worker, new))
@@ -208,13 +266,13 @@ class PanelLifecycle(unittest.TestCase):
                 history.execute("""INSERT INTO thread_items(thread_id,turn_id,item_id,item_type,item_json)
                                    VALUES(?,?,'new-answer','agentMessage','{"phase":"final_answer","text":"新的答复"}')""",
                                 (worker, new))
-            self.assertEqual((current()["status"], current()["summary"]), ("review", "再检查第三处定义"))
+            self.assertEqual((current()["status"], current()["summary"]), ("review", "新的答复"))
             with state.write_registry() as registry:
                 registry.execute("UPDATE workers SET status='running',summary='上一轮进展',updated=2.5,turn_id=NULL")
-            self.assertEqual((current()["status"], current()["summary"]), ("review", "再检查第三处定义"))
+            self.assertEqual((current()["status"], current()["summary"]), ("review", "新的答复"))
             self.assertEqual(action("completed", turn=new)["structuredContent"]["status"], "completed")
             self.assertEqual(action("review", turn=new)["structuredContent"]["status"], "review")
-            self.assertEqual(current()["summary"], "再检查第三处定义")
+            self.assertEqual(current()["summary"], "新的答复")
 
     def test_select_existing_project_chat_without_dispatch(self):
         owner, worker, other, outside = [str(uuid4()) for _ in range(4)]
@@ -256,6 +314,177 @@ class PanelLifecycle(unittest.TestCase):
                 state.record_forward(registry, owner, worker, (state.time.time()+1, "审查指定版本"), worker, "")
             self.assertEqual(state.snapshot(owner)["threads"][0]["status"], "unconfirmed")
 
+    def test_worker_roles_persist_across_dispatches_and_turns(self):
+        owner, worker, other = (str(uuid4()) for _ in range(3))
+        with tempfile.TemporaryDirectory() as directory, patch.dict(environ, CODEX_HOME=directory):
+            create_indexes(directory, [(uid, "user", uid) for uid in (owner, worker, other)])
+            state.initialize(owner, owner)
+            state.initialize(other, other)
+            with patch.object(panel_onboarding, "listed_threads", return_value=(
+                    {uid: {"title": uid, "projectId": "p"} for uid in (owner, worker)}, True)):
+                adopted = panel_onboarding.adopt(owner, thread_id=worker, title=worker, project_id="p", role="原始分工")
+            self.assertEqual(adopted["threads"][0]["role"], "原始分工")
+            with self.assertRaisesRegex(ValueError, "正式聊天 ID"):
+                state.track(owner, title="准备中", pending_id="client", role="任务")
+            sent = state.time.time()+1
+            with patch.object(state, "forward_receipts", return_value=[(worker, sent, "本轮任务", sent)]):
+                row = state.track(owner, title=worker, thread_id=worker, role="核对\n  模型")["threads"][0]
+            self.assertEqual((row["role"], row["latest_assignment"]), ("核对 模型", "本轮任务"))
+            self.assertEqual(row["latest_assignment_at"], state.datetime.fromtimestamp(sent, state.timezone.utc).isoformat())
+            with state.write_registry() as db:
+                state.record_forward(db, owner, worker, (sent+1, "新任务"), worker, "本轮摘要")
+                prior_stamp = db.execute("SELECT updated FROM worker_roles").fetchone()[0]
+            with closing(sqlite3.connect(Path(directory) / "thread_history_1.sqlite")) as db, db:
+                db.execute("INSERT INTO thread_turns VALUES(?, 'new','inProgress',?,NULL,1,NULL)", (worker, sent+2))
+            state.update(worker, status="waiting", summary="等用户选择")
+            self.assertEqual(state.snapshot(owner)["threads"][0]["role"], "核对 模型")
+            saved = state.set_worker_roles(owner, [{"thread_id": worker, "role": "核对 模型"}])
+            self.assertNotIn("token_usage", saved)
+            with state.readonly(state.panel_db()) as db:
+                self.assertEqual(db.execute("SELECT updated FROM worker_roles").fetchone()[0], prior_stamp)
+            for target, actor in [(worker, other), (str(uuid4()), owner)]:
+                with self.assertRaises(ValueError):
+                    state.set_worker_role(actor, thread_id=target, role="错误的归属")
+            for roles in ([{"thread_id": worker, "role": "重复"}]*2, [{"thread_id": worker, "role": "字"*161}]):
+                with self.assertRaises(ValueError):
+                    state.set_worker_roles(owner, roles)
+            self.assertNotIn("role", state.set_worker_role(owner, thread_id=worker, role=" ")["threads"][0])
+            with state.write_registry() as db:
+                db.execute("DROP TABLE worker_roles")
+                db.execute("DROP TABLE project_decisions")
+            legacy = state.snapshot(owner)
+            self.assertEqual(legacy["decisions"], [])
+            self.assertNotIn("role", legacy["threads"][0])
+
+    def test_director_roster_and_digest(self):
+        owner, missing, filled, archived, outside = (str(uuid4()) for _ in range(5))
+        with tempfile.TemporaryDirectory() as directory, patch.dict(environ, CODEX_HOME=directory):
+            create_indexes(directory, [(uid, "user", uid) for uid in (owner, missing, filled, archived, outside)])
+            with state.write_registry() as db:
+                db.execute("INSERT INTO directors VALUES(?,?,'d')", (owner, owner))
+                db.executemany("INSERT INTO workers VALUES(?,?,NULL,?,?,'ready','',0,NULL)",
+                               [(owner, uid, uid, uid) for uid in (missing, filled, archived)])
+                db.execute("INSERT INTO workers VALUES(?,NULL,'new','p','准备中','preparing','',0,NULL)", (owner,))
+            with closing(sqlite3.connect(Path(directory) / "state_5.sqlite")) as db, db:
+                db.execute("UPDATE threads SET archived=1 WHERE id=?", (archived,))
+                db.execute("UPDATE threads SET title='项目总讨论' WHERE id=?", (owner,))
+            state.set_worker_role(owner, thread_id=filled, role="已有手写分工")
+            decision = state.upsert_decision(owner, content="保留四类", source_thread_id=filled)["decisions"][0]
+            history_path = Path(directory) / "thread_history_1.sqlite"
+            with closing(sqlite3.connect(history_path)) as db, db:
+                db.executemany("INSERT INTO thread_turns VALUES(?,?,?,?,?,?,?)", [
+                    (missing, "first", "completed", 1, 2, 10, "answer"),
+                    (missing, "last", "inProgress", 3, None, 20, None)])
+                def item(turn, kind, body, order):
+                    db.execute("INSERT INTO thread_items VALUES(?,?,?,?,?,?,0,0,0)",
+                               (missing, turn, str(order), kind, json.dumps(body), order))
+                item("first", "userMessage", {"content": [{"text": "\n  "}]}, 1)
+                item("first", "functionCallOutput", {"namespace": "codex_app", "name": "create_thread",
+                     "output": "<codex_delegation><input>【Director 派工】审核 A &amp; B\n  模型</input></codex_delegation>"}, 2)
+                item("last", "userMessage", {"content": [{"type": "image"}, {"text": " 复核\n "}, {"text": "新"*210}]}, 3)
+                item("first", "agentMessage", {"phase": "final_answer", "text": "采用\n 四类。\n\n"
+                     f"[← 返回总讨论](codex://threads/{owner})\n"}, 4)
+                item("last", "agentMessage", {"phase": "commentary", "text": "当前进度"}, 5)
+            with state.write_registry() as db:
+                db.execute("UPDATE workers SET status='running',turn_id='last' WHERE thread_id=?", (missing,))
+            titles = ["标题一", "标题二", "标题三", "标题四", "标题五", "标题六", "标题三"]
+            receipts = [(missing, 100-index, subject, index+1) for index, subject in enumerate(titles)]
+            with patch.object(state, "forward_receipts", return_value=receipts):
+                result = state.digest(owner)
+            self.assertEqual(result["director_title"], "项目总讨论")
+            self.assertEqual([r["thread_id"] for r in result["threads"]], [missing])
+            row = result["threads"][0]
+            self.assertEqual(row["recent_dispatches"], ["标题三", "标题六", "标题五"])
+            self.assertEqual(len(row["turns"]), 1)
+            self.assertEqual(row["turns"][0]["reply"], "")
+            roster = state.director_roster_hint(owner)
+            self.assertIn(f"{filled} [未派工] ({filled})：已有手写分工", roster)
+            self.assertIn("后台已记录 1 条", roster)
+            self.assertNotIn(archived, roster)
+            self.assertNotIn(outside, roster)
+            with closing(sqlite3.connect(history_path)) as db, db:
+                db.execute("UPDATE thread_items SET item_id='answer' WHERE turn_id='first' AND item_type='agentMessage'")
+                db.execute("INSERT INTO thread_items VALUES(?, 'first','tool','functionCallOutput',?,0,0,0,0)",
+                           (missing,json.dumps({"output":"不该出现在问答中的工具日志"})))
+            single = state.digest(owner, thread_id=missing)["threads"][0]["turns"]
+            self.assertEqual([entry["turn_id"] for entry in single], ["last","first"])
+            self.assertEqual(single[1]["request"], "审核 A & B 模型")
+            self.assertEqual(single[1]["reply"], "采用 四类。")
+            self.assertNotIn("工具日志", str(single))
+            all_info = state.digest(owner, all_threads=True)
+            self.assertEqual([r["thread_id"] for r in all_info["threads"]], [missing, filled])
+            self.assertEqual(all_info["existing_decisions"], [
+                {"id": decision["id"], "content": "保留四类", "source_thread_id": filled}])
+            for target in (outside, archived):
+                with self.assertRaisesRegex(ValueError, "未归档执行串"):
+                    state.digest(owner, thread_id=target)
+            with self.assertRaisesRegex(ValueError, "只有已登记的总讨论"):
+                state.digest(missing)
+            def cli(actor, args, payload=None, check=True):
+                return subprocess.run([sys.executable, "-B", str(Path(state.__file__)), *args], encoding="utf-8",
+                                      input=json.dumps(payload, ensure_ascii=False) if payload is not None else None,
+                                      env=dict(environ, CODEX_THREAD_ID=actor), capture_output=True, check=check)
+            self.assertEqual(len(json.loads(cli(owner, ["digest","--all"]).stdout)["threads"]), 2)
+            target = json.loads(cli(owner, ["digest","--thread",missing,"--turns","1"]).stdout)
+            self.assertEqual(len(target["threads"][0]["turns"]), 1)
+            self.assertNotEqual(cli(owner, ["show","--turns","2"], check=False).returncode, 0)
+            self.assertNotEqual(cli(missing, ["digest"], check=False).returncode, 0)
+            history_path.unlink()
+            self.assertEqual(state.digest(owner, thread_id=missing)["threads"][0]["turns"], [])
+            updates = [{"thread_id": missing, "role": "中文分工"}]
+            self.assertNotIn("token_usage", json.loads(cli(owner, ["roles", "--stdin"], updates).stdout))
+            cli(owner, ["roles", "--stdin"], {"roles": [{"thread_id": missing, "role": "迟到的草稿"}], "only_missing": True})
+            self.assertEqual([r["role"] for r in state.digest(owner, all_threads=True)["threads"]],
+                             ["中文分工", "已有手写分工"])
+
+    def test_project_decisions_lifecycle_and_timestamps(self):
+        owner, worker, other = (str(uuid4()) for _ in range(3))
+        with tempfile.TemporaryDirectory() as directory, patch.dict(environ, CODEX_HOME=directory):
+            create_indexes(directory, [(uid, "user", name) for uid, name in
+                                      [(owner, "总讨论"), (worker, "实施"), (other, "其他项目")]])
+            key = state.initialize(owner, "总讨论")["view_key"]
+            state.initialize(other, "其他项目")
+            with state.write_registry() as db:
+                db.execute("INSERT INTO workers VALUES(?,?,NULL,'w','实施','ready','',0,NULL)", (owner, worker))
+            state.set_worker_role(owner, thread_id=worker, role="完成实施")
+            with patch.object(state.time, "time", return_value=10):
+                first = state.upsert_decision(owner, content="按方案执行", source_thread_id=owner)["decisions"][0]
+                second = state.upsert_decision(owner, content="初稿")["decisions"][1]
+                removed = state.upsert_decision(owner, content="即将过期")["decisions"][2]
+            self.assertRegex(first["id"], r"^[0-9a-f]{8}$")
+            self.assertEqual(first["source_title"], "总讨论")
+            with patch.object(state.time, "time", return_value=20):
+                changed = state.upsert_decision(owner, id=second["id"], content="采用新方案", source_thread_id=worker)["decisions"][1]
+                self.assertEqual(changed["source_title"], "实施")
+                self.assertGreater(changed["updated_at"], second["updated_at"])
+                state.upsert_decision(owner, id=first["id"], content="按方案执行", source_thread_id=owner)
+            self.assertEqual(state.snapshot(owner)["decisions"][0], first)
+            self.assertNotIn("role", state.snapshot(worker)["threads"][0])
+            self.assertNotIn("decisions", state.snapshot(worker))
+            self.assertNotIn("can_edit_project", state.snapshot(view_key=key))
+            with self.assertRaises(ValueError):
+                state.delete_decision(other, id=first["id"])
+            with self.assertRaises(ValueError):
+                state.upsert_decision(other, id=first["id"], content="其他项目的决定")
+            for entry in ({"content":"字"*241}, {"content":"来源错误","source_thread_id":other}):
+                with self.assertRaises(ValueError):
+                    state.upsert_decision(owner, **entry)
+            state.delete_decision(owner, id=removed["id"])
+            with self.assertRaises(ValueError):
+                state.delete_decision(owner, id=removed["id"])
+            with closing(sqlite3.connect(Path(directory) / "state_5.sqlite")) as host, host:
+                host.execute("UPDATE threads SET archived=1,title='已改名' WHERE id=?", (worker,))
+            archived = state.snapshot(owner)["decisions"][1]
+            self.assertEqual((archived["source_archived"], archived["source_title"]), (True,"已改名"))
+            with self.assertRaisesRegex(ValueError, "已归档"):
+                state.upsert_decision(owner, content="归档来源", source_thread_id=worker)
+            with self.assertRaises(ValueError):
+                state.set_worker_roles(owner, [{"thread_id":worker, "role":""}])
+            for i in range(18):
+                state.upsert_decision(owner, content=str(i))
+            with self.assertRaisesRegex(ValueError, "20"):
+                state.upsert_decision(owner, content="超出数量")
+
     def test_utf8_payload_over_stdin(self):
         root = str(uuid4())
         script = Path(state.__file__)
@@ -267,6 +496,18 @@ class PanelLifecycle(unittest.TestCase):
                 input='总讨论 "路线" — 复核\n', capture_output=True, encoding="utf-8", env=env, check=True,
             )
             self.assertEqual(json.loads(result.stdout)["director_title"], '总讨论 "路线" — 复核')
+            worker = str(uuid4())
+            with patch.dict(environ, CODEX_HOME=directory), state.write_registry() as db:
+                db.execute("INSERT INTO workers VALUES(?,?,NULL,'w','旧串','ready','',0,NULL)", (root, worker))
+            def command(action, payload):
+                result = subprocess.run([sys.executable, "-B", "-X", "utf8", str(script), action, "--stdin"],
+                                        input=json.dumps(payload, ensure_ascii=False), capture_output=True,
+                                        encoding="utf-8", env=env, check=True)
+                return json.loads(result.stdout)
+            self.assertEqual(command("role", {"thread_id": worker, "role": "模型复核"})["threads"][0]["role"], "模型复核")
+            decision = command("decision", {"content": "采用修订方案"})["decisions"][0]
+            self.assertEqual(decision["content"], "采用修订方案")
+            self.assertEqual(command("decision", {"action": "delete", "id": decision["id"]})["decisions"], [])
 
     def test_lifecycle(self):
         root, worker, other, ordinary, wrong = [str(uuid4()) for _ in range(5)]

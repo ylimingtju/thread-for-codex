@@ -183,6 +183,12 @@ def main():
         raise SystemExit("版本切换未生效，请查看 Codex 插件设置。")
     print(f"已启用 {active} {plugins[active]['version']}。已有项目可以继续使用原聊天。")
     if active == LOCAL:
+        # Existing projects must have a revision before their first post-upgrade prompt.
+        sys.path.insert(0, str(ROOT / PLUGIN))
+        from panel_state import panel_db, write_registry
+        if panel_db().is_file():
+            with write_registry():
+                pass
         print("升级时若 Codex 正在运行，请在现有任务结束后退出并重新打开，让旧聊天载入新版规则。")
 
 

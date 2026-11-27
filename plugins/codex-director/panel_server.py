@@ -119,17 +119,27 @@ def open_registered(data, target):
     return {'opened': opened, 'url': url, 'title': titles[uid]}
 
 
+def validate_schema(spec, value):
+    kind = spec['type']
+    if kind == 'object' and isinstance(value, dict):
+        props = spec['properties']
+        if value.keys() <= props.keys() and set(spec['required']) <= value.keys():
+            for key, field in value.items():
+                validate_schema(props[key], field)
+            return
+    elif kind == 'string' and isinstance(value, str):
+        if (spec.get('minLength', 1) <= len(value) <= spec.get('maxLength', 256)
+                and ('enum' not in spec or value in spec['enum'])):
+            return
+    raise ProtocolError(-32602, '无效的工具参数。')
+
+
 def call(params):
     name = params.get('name')
     args = params.get('arguments', {})
     if not isinstance(name, str) or name not in TOOLS or not isinstance(args, dict):
         raise ProtocolError(-32602, '无效的工具调用。')
-    schema = TOOLS[name]['inputSchema']
-    if (not args.keys() <= schema['properties'].keys() or not set(schema['required']) <= args.keys()
-            or not all(isinstance(value, str) and 0 < len(value) <= schema['properties'][field].get('maxLength', 256) for field, value in args.items())):
-        raise ProtocolError(-32602, '无效的工具参数。')
-    if name == 'open_panel_link' and args['url'] != panel_state.PANEL_LINK:
-        raise ProtocolError(-32602, '无法识别这个面板链接。')
+    validate_schema(TOOLS[name]['inputSchema'], args)
     meta = params.get('_meta', {})
     try:
         actor = meta.get('threadId') if isinstance(meta, dict) else None

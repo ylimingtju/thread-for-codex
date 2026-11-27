@@ -15,6 +15,12 @@ def check():
     data = {'paired': True, 'role': 'worker', 'director_id': director, 'director_title': '总讨论',
             'threads': [{'thread_id': worker, 'title': '核对模型', 'status': 'review'}]}
     panel = server.resource_content(server.PANEL)
+    assert set(server.TOOLS) == {'enqueue_task','show_entry','show_receipt','show_panel','open_panel_link',
+                                 'snapshot','open_thread','set_thread_status'}
+    assert "const groups = [['waiting','等你回复'],['running','进行中'],['review','已回复'],['completed','已完成']]" in panel['text']
+    assert 'id="ready-drawer"' in panel['text'] and '未派工旧串' in panel['text']
+    for removed in ('tab-info','card-roles','card-decisions','save_worker_roles','save_decisions','start_project_materials'):
+        assert removed not in panel['text']
     assert server.TOOLS['show_panel']['_meta']['openai/ui']['entrypoints'] == [{'type': 'thread'}]
     assert server.TOOLS['open_thread']['_meta']['ui']['visibility'] == ['app']
     assert panel['mimeType'] == server.MIME and '__DIRECTOR_' not in panel['text']
@@ -72,6 +78,7 @@ def check():
         launch.assert_called_once_with('codex://threads/' + director)
         launch.side_effect = OSError()
         assert not server.open_registered(data, director)['opened']
+
 
 
 if __name__ == '__main__':

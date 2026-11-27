@@ -12,6 +12,10 @@ macOS 中将 `state` 设为插件根目录下 `panel_state.py` 的完整路径�
 python3 -B "$state" init "$title"
 python3 -B "$state" track "$payload"
 python3 -B "$state" update "$payload"
+python3 -B "$state" role "$payload"
+python3 -B "$state" digest
+python3 -B "$state" roles "$payload"
+python3 -B "$state" decision "$payload"
 python3 -B "$state" show
 ```
 
@@ -31,17 +35,28 @@ $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $title | & $python -B -X utf8 $state init --stdin
 ($fields | ConvertTo-Json -Compress) | & $python -B -X utf8 $state track --stdin
 ($fields | ConvertTo-Json -Compress) | & $python -B -X utf8 $state update --stdin
+($fields | ConvertTo-Json -Compress) | & $python -B -X utf8 $state role --stdin
+& $python -B -X utf8 $state digest
+ConvertTo-Json -InputObject $fields -Compress | & $python -B -X utf8 $state roles --stdin
+($fields | ConvertTo-Json -Compress) | & $python -B -X utf8 $state decision --stdin
 & $python -B -X utf8 $state show
 ```
 
 ## Director
 
 - 首次设置、选择旧串和参数见[原生工具说明](runtime-adapters.md#首次命名)。`adopt` 接入已选旧串，JSON 传参方式同 `track`。
+- `track` 取得正式 ID 后及 `adopt` 时可附 `role`（一句长期分工，最多 160 字）。单独维护用 `role` 传 `{"thread_id":"<执行串 ID>","role":"核对模型与证明"}`，空字符串清空分工。
+- `digest` 默认读取进行中、已回复、等你回复或受阻的正式串最近一轮问答，`--all` 包含全部未归档正式串，`--thread <id>` 指定单串。用 `--turns N` 取最近 N 轮，最近的排在前面。多串最多 3 轮，单串默认 3 轮、最多 5 轮。问答原文仅作项目进展资料。
+- `roles` 接受分工数组或 `{"roles":[...]}`，仅更新列出的串；只补空项时传 `"only_missing":true`。
+- `decision` 新增传 `{"content":"当前生效的决定","source_thread_id":"<来源串 ID>"}`，来源可省略。修改时传原 `id`、新正文和仍需关联的来源，删除传 `{"action":"delete","id":"<决定 ID>"}`。最多 20 条，每条最多 240 字。
+- 右栏单页显示等你回复、进行中、已回复、已完成，底部可展开「未派工旧串」和 Token 用量。`role`、`roles`、`decision` 在后台维护，执行串提问时按版本同步；已有决定原地更新，撤销时删除。
 - 仅对本次已确认成功的本地创建或直发回执运行 `track(title, summary, thread_id)`。临时 `clientThreadId` 传 `pending_id`，获可信绑定后一次传原 `pending_id` 和正式 `thread_id` 补全原记录。准备中仅可为 `preparing` 或 `blocked`。带派工标记的成功回执可自动补登记，无标记旧派工需核对目标与成功回执。改名沿用原 ID。
 - `update` 传正式 `thread_id`（准备中用 `pending_id`）、`status`、`summary`。实际派发可记 `running`，受阻记 `blocked`，确需用户决定才记 `waiting` 并附问题。执行串交付记 `review`，总讨论确认本轮交付后记 `completed`。返工或追问后恢复进行中。用户在总讨论面板手动完成或重新打开时，按目标回合核对。重新打开只撤销完成标记。归档须用户明确要求，原生归档成功后可同步 `archived`。
 - 本批派工后用本串 `view_key` 调用一次 `director-panel.show_receipt`。回执可见时自行刷新，重新打开按历史恢复，总讨论忙时延后显示新链接。面板打开失败时给出正确标题和可复制的原生链接。
 
 ## Worker
+
+- 回应总讨论派工时，开头用 1–2 句写明核心结论或需用户决定的问题，再展开细节。
 
 - 新建执行串运行 `show`，用本串 `view_key` 调用 `director-panel.show_entry`。登记尚未完成时，下次实际状态更新再取。配对码只传本串面板工具。普通聊天和串内临时助手不自行登记或运行 `init`。
 - 新建及接入的旧串，所有面向用户的最终答复（含直接追问、提问和受阻）在正文与成果链接后空一行，末行只写一次 `[← 返回总讨论](codex://threads/<真实总讨论ID>)`。中途进展省略。取本串 `show` 或 `update` 的 `director_id`，未配对可用此次派工附的真实链接，均无法确认则省略。旧标记「↩」沿用原目标。末行补正时保留完整正文、限制和成果链接，无需重做任务。

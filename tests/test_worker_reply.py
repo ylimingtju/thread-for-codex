@@ -12,6 +12,26 @@ import worker_reply
 
 
 class WorkerReply(unittest.TestCase):
+    def test_director_roster_and_worker_prompt_sync(self):
+        from test_panel_state import create_indexes
+        owner, worker = str(uuid4()), str(uuid4())
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, CODEX_HOME=directory):
+            create_indexes(directory, [(owner,"user","总讨论"),(worker,"user","算法串")])
+            with panel_state.write_registry() as db:
+                db.execute("INSERT INTO directors VALUES(?,'总讨论','d')",(owner,))
+                db.execute("INSERT INTO workers VALUES(?,?,NULL,'w','算法串','ready','',0,NULL)",(owner,worker))
+            panel_state.set_worker_role(owner,thread_id=worker,role="核对算法")
+            def context(actor, event, **extra):
+                result=worker_reply.hook_result({"session_id":actor,"hook_event_name":event,**extra})
+                return result["hookSpecificOutput"]["additionalContext"]
+            director=context(owner,"UserPromptSubmit")
+            self.assertIn("严禁总讨论读/搜业务源码",director)
+            self.assertIn(f"算法串 [未派工] ({worker})：核对算法",director)
+            self.assertNotIn("当前执行串花名册",context(owner,"SessionStart",source="resume"))
+            self.assertNotIn("项目共享上下文",context(worker,"SessionStart",source="resume"))
+            self.assertIn("本串分工：核对算法",context(worker,"UserPromptSubmit"))
+            self.assertNotIn("项目共享上下文",context(worker,"UserPromptSubmit"))
+
     def test_selected_plugin_is_distinct_from_quoted_text(self):
         import json
         import sqlite3

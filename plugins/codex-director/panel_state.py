@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import re
 import secrets
 import sqlite3
 import stat
@@ -19,6 +20,10 @@ from panel_usage import usage_for_threads
 # A desktop link only. No web service or chat ID is needed to open the current panel.
 PANEL_LINK = "https://thread-for-codex.invalid/panel"
 DISPATCH_PREFIX = "【Director 派工】"
+MAX_ROLE_LEN = 160
+MAX_DECISION_LEN = 240
+MAX_DECISIONS = 20
+DECISION_ID_RE = re.compile(r"^[0-9a-f]{8}$")
 
 
 def home():
@@ -63,6 +68,26 @@ def write_registry():
         db.execute("""CREATE TABLE IF NOT EXISTS worker_usage_start(
             director TEXT NOT NULL, thread_id TEXT NOT NULL, since REAL NOT NULL,
             PRIMARY KEY(director,thread_id))""")
+        db.execute("""CREATE TABLE IF NOT EXISTS worker_roles(
+            director TEXT NOT NULL REFERENCES directors(id), thread_id TEXT NOT NULL,
+            role TEXT NOT NULL, updated REAL NOT NULL, PRIMARY KEY(director,thread_id))""")
+        db.execute("""CREATE TABLE IF NOT EXISTS project_decisions(
+            id TEXT PRIMARY KEY, director TEXT NOT NULL REFERENCES directors(id),
+            content TEXT NOT NULL, source_thread_id TEXT, created REAL NOT NULL,
+            updated REAL NOT NULL, position INTEGER NOT NULL DEFAULT 0)""")
+        first_revision_table = not db.execute("SELECT 1 FROM sqlite_master WHERE name='project_revisions'").fetchone()
+        db.execute("""CREATE TABLE IF NOT EXISTS project_revisions(
+            director TEXT PRIMARY KEY REFERENCES directors(id), rev INTEGER NOT NULL DEFAULT 0, updated REAL NOT NULL)""")
+        db.execute("""CREATE TABLE IF NOT EXISTS worker_sync(
+            director TEXT NOT NULL REFERENCES directors(id), thread_id TEXT NOT NULL,
+            seen_rev INTEGER NOT NULL DEFAULT 0, updated REAL NOT NULL, PRIMARY KEY(director,thread_id))""")
+        db.execute("""CREATE TABLE IF NOT EXISTS sync_log(
+            director TEXT NOT NULL REFERENCES directors(id), rev INTEGER NOT NULL, kind TEXT NOT NULL,
+            item_key TEXT NOT NULL, summary TEXT NOT NULL, created REAL NOT NULL, PRIMARY KEY(director,rev))""")
+        if first_revision_table:
+            # Existing v1.4 notes are the first snapshot; empty projects remain at revision zero.
+            db.execute("""INSERT INTO project_revisions SELECT director,1,? FROM
+                       (SELECT director FROM worker_roles UNION SELECT director FROM project_decisions)""", (time.time(),))
         yield db
 
 
@@ -131,6 +156,9 @@ def latest_turn(db, thread):
                    WHERE i.thread_id=t.thread_id AND i.turn_id=t.turn_id
                      AND i.item_id=t.final_agent_item_id AND i.item_type='agentMessage'
                      AND json_extract(i.item_json,'$.phase')='final_answer') AS delivered,
+            (SELECT substr(json_extract(i.item_json,'$.text'),1,1024) FROM thread_items i
+             WHERE i.thread_id=t.thread_id AND i.turn_id=t.turn_id AND i.item_id=t.final_agent_item_id
+               AND i.item_type='agentMessage' AND json_extract(i.item_json,'$.phase')='final_answer') AS final_answer,
             (SELECT p.started_at FROM thread_turns p
              WHERE p.thread_id=t.thread_id AND p.started_at IS NOT NULL AND p.rollout_ordinal<t.rollout_ordinal
              ORDER BY p.rollout_ordinal DESC LIMIT 1) AS previous_start,
@@ -280,25 +308,28 @@ def forward_receipts(actor, unstarted=None):
                 continue
             first_line = args["prompt"].partition("\n")[0]
             subject = first_line[len(DISPATCH_PREFIX):].strip()[:240] if first_line.startswith(DISPATCH_PREFIX) else ""
-            yield thread, sent_ms / 1000, subject
+            yield thread, sent_ms / 1000, subject, sent_ms / 1000
 
         for args, result, sent_ms in dispatch_receipts(db, actor, "enqueue_task"):
             thread = result["threadId"]
             started = queued_turn(db, thread, result["clientUserMessageId"])
             if started and started["created_at_ms"]:
                 subject = args["prompt"].partition("\n")[0][len(DISPATCH_PREFIX):].strip()[:240]
-                yield thread, started["created_at_ms"] / 1000, subject
+                yield thread, started["created_at_ms"] / 1000, subject, sent_ms / 1000
             elif unstarted is not None:
                 unstarted[thread] = max(unstarted.get(thread, 0), sent_ms / 1000)
 
 
-def latest_forwards(actor, target=None, *, unstarted=None):
+def latest_forwards(actor, target=None, *, unstarted=None, assignment_times=None):
     # A marked message assigns work. An older unmarked send needs explicit track(target).
     forwards = {}
-    for thread, sent, subject in forward_receipts(actor, unstarted):
+    for thread, started, subject, sent in forward_receipts(actor, unstarted):
         if (target is None and subject) or target == thread:
-            if thread not in forwards or sent > forwards[thread][0]:
-                forwards[thread] = (sent, subject)
+            if thread not in forwards or started > forwards[thread][0]:
+                forwards[thread] = (started, subject)
+                if assignment_times is not None:
+                    # A queued prompt cannot contain decisions made while it was waiting.
+                    assignment_times[thread] = sent
     return forwards
 
 
@@ -365,9 +396,166 @@ def record_forward(db, owner, thread, forward, title, summary):
                    (owner, thread, secrets.token_urlsafe(24), title, summary, sent))
 
 
-def track(actor, *, title, thread_id=None, pending_id=None, summary=None):
+def normalize_text(value, limit, *, allow_empty=False):
+    if not isinstance(value, str):
+        raise ValueError("内容必须为文本。")
+    text = " ".join(value.split())
+    if not text and not allow_empty:
+        raise ValueError("内容不能为空。")
+    if len(text) > limit:
+        raise ValueError(f"内容不能超过 {limit} 字。")
+    return text
+
+
+def decision_id_text(value):
+    if not isinstance(value, str) or not DECISION_ID_RE.fullmatch(value):
+        raise ValueError("无效的决定标识。")
+    return value
+
+
+def _require_director(db, actor, *, check_native=False):
+    uuid_text(actor)
+    if not db.execute("SELECT 1 FROM directors WHERE id=?", (actor,)).fetchone():
+        raise ValueError("只有已登记的总讨论可以修改项目资料。")
+    if check_native and local_thread(actor)["archived"]:
+        raise ValueError("已归档的总讨论不能修改项目资料。")
+
+
+def _validate_source_thread(db, director, source_thread_id):
+    if source_thread_id in (None, ""):
+        return None
+    uid = uuid_text(source_thread_id)
+    if uid != director and not db.execute("SELECT 1 FROM workers WHERE director=? AND thread_id=?",
+                                          (director, uid)).fetchone():
+        raise ValueError("来源讨论不属于当前项目。")
+    native = native_threads([uid]).get(uid)
+    if native and native["archived"]:
+        raise ValueError("不能关联已归档的讨论串。")
+    return uid
+
+
+def _bump_rev(db, director, kind, item_key, summary, now):
+    db.execute("""INSERT INTO project_revisions VALUES(?,1,?) ON CONFLICT(director)
+                  DO UPDATE SET rev=rev+1, updated=excluded.updated""", (director, now))
+    rev = db.execute("SELECT rev FROM project_revisions WHERE director=?", (director,)).fetchone()[0]
+    db.execute("INSERT INTO sync_log VALUES(?,?,?,?,?,?)", (director, rev, kind, item_key, summary, now))
+    db.execute("DELETE FROM sync_log WHERE director=? AND rev<=?", (director, rev - 30))
+
+
+def _upsert_worker_role(db, director, thread_id, role, now):
+    text = normalize_text(role, MAX_ROLE_LEN, allow_empty=True)
+    if text:
+        change = db.execute("""INSERT INTO worker_roles VALUES(?,?,?,?) ON CONFLICT(director,thread_id)
+                      DO UPDATE SET role=excluded.role, updated=excluded.updated
+                      WHERE worker_roles.role<>excluded.role""", (director, thread_id, text, now))
+    else:
+        change = db.execute("DELETE FROM worker_roles WHERE director=? AND thread_id=?", (director, thread_id))
+    if change.rowcount:
+        title = db.execute("SELECT title FROM workers WHERE director=? AND thread_id=?", (director, thread_id)).fetchone()[0]
+        summary = f"分工更新 · {title}：{text}" if text else f"分工移除 · {title}"
+        _bump_rev(db, director, "role_upsert" if text else "role_delete", thread_id, summary, now)
+
+
+def set_worker_role(actor, *, thread_id, role):
+    thread_id = uuid_text(thread_id)
+    with write_registry() as db:
+        _require_director(db, actor)
+        if not db.execute("SELECT 1 FROM workers WHERE director=? AND thread_id=?", (actor, thread_id)).fetchone():
+            raise ValueError("该执行串尚未登记。")
+        _upsert_worker_role(db, actor, thread_id, role, time.time())
+    return snapshot(actor)
+
+
+def save_worker_roles(actor, roles, *, include_usage=True, check_native=True, only_missing=False):
+    if not isinstance(roles, list) or len(roles) > 200:
+        raise ValueError("分工列表最多包含 200 个执行串。")
+    with write_registry() as db:
+        _require_director(db, actor, check_native=check_native)
+        registered = dict(db.execute("SELECT thread_id,status FROM workers WHERE director=? AND thread_id IS NOT NULL",
+                                     (actor,)))
+        edits = {}
+        for item in roles:
+            if not isinstance(item, dict) or set(item) != {"thread_id", "role"}:
+                raise ValueError("每条分工须包含 thread_id 和 role。")
+            thread = uuid_text(item["thread_id"])
+            if thread in edits or thread not in registered:
+                raise ValueError("执行串重复或不属于当前总讨论。")
+            edits[thread] = item["role"]
+        native = native_threads(list(edits))
+        now = time.time()
+        for thread, role in edits.items():
+            if thread not in native or native[thread]["archived"] or registered[thread] == "archived":
+                raise ValueError("只能修改已登记、未归档的执行串。")
+            if only_missing and db.execute("SELECT 1 FROM worker_roles WHERE director=? AND thread_id=?",
+                                           (actor, thread)).fetchone():
+                continue
+            _upsert_worker_role(db, actor, thread, role, now)
+    return snapshot(actor, include_usage=include_usage)
+
+
+def set_worker_roles(actor, roles, *, only_missing=False):
+    if not isinstance(only_missing, bool):
+        raise ValueError("only_missing 须为布尔值。")
+    return save_worker_roles(actor, roles, include_usage=False, check_native=False, only_missing=only_missing)
+
+
+def _insert_decision(db, director, text, source, now, position):
+    did = secrets.token_hex(4)
+    while db.execute("SELECT 1 FROM project_decisions WHERE id=?", (did,)).fetchone():
+        did = secrets.token_hex(4)
+    db.execute("INSERT INTO project_decisions VALUES(?,?,?,?,?,?,?)", (did, director, text, source, now, now, position))
+    _bump_rev(db, director, "decision_upsert", did, "已确认决定：" + text, now)
+    return did
+
+
+def _update_decision(db, director, row, text, source, now):
+    if (row["content"], row["source_thread_id"]) == (text, source):
+        return False
+    db.execute("UPDATE project_decisions SET content=?,source_thread_id=?,updated=? WHERE id=? AND director=?",
+               (text, source, now, row["id"], director))
+    _bump_rev(db, director, "decision_upsert", row["id"], "已确认决定：" + text, now)
+    return True
+
+
+def upsert_decision(actor, *, content, id=None, source_thread_id=None):
+    text = normalize_text(content, MAX_DECISION_LEN)
+    with write_registry() as db:
+        _require_director(db, actor)
+        source = _validate_source_thread(db, actor, source_thread_id)
+        now = time.time()
+        if id is None:
+            count, position = db.execute("SELECT count(*),coalesce(max(position),-1)+1 FROM project_decisions "
+                                         "WHERE director=?", (actor,)).fetchone()
+            if count >= MAX_DECISIONS:
+                raise ValueError(f"已确认决定最多保留 {MAX_DECISIONS} 条，请先删除过期决定。")
+            _insert_decision(db, actor, text, source, now, position)
+        else:
+            did = decision_id_text(id)
+            row = db.execute("SELECT id,content,source_thread_id FROM project_decisions WHERE id=? AND director=?",
+                             (did, actor)).fetchone()
+            if not row:
+                raise ValueError("未找到对应的已确认决定。")
+            _update_decision(db, actor, row, text, source, now)
+    return snapshot(actor)
+
+
+def delete_decision(actor, *, id):
+    did = decision_id_text(id)
+    with write_registry() as db:
+        _require_director(db, actor)
+        old = db.execute("SELECT content FROM project_decisions WHERE id=? AND director=?", (did, actor)).fetchone()
+        if not old:
+            raise ValueError("未找到对应的已确认决定。")
+        db.execute("DELETE FROM project_decisions WHERE id=? AND director=?", (did, actor))
+        _bump_rev(db, actor, "decision_delete", did, f"原决定「{old[0][:80]}」已废止", time.time())
+    return snapshot(actor)
+
+
+def track(actor, *, title, thread_id=None, pending_id=None, summary=None, role=None):
     actor, title = uuid_text(actor), label(title, 240)
     thread_id, pending_id = handles(thread_id, pending_id)
+    if role is not None and thread_id is None:
+        raise ValueError("补全正式聊天 ID 后才能登记长期分工。")
     summary = label(summary) if summary is not None else ""
     with readonly(panel_db()) as db:
         if not db.execute("SELECT 1 FROM directors WHERE id=?", (actor,)).fetchone():
@@ -398,6 +586,8 @@ def track(actor, *, title, thread_id=None, pending_id=None, summary=None):
         elif old["title"] != title or (pending_id and not old["pending_id"]):
             db.execute("UPDATE workers SET title=?,pending_id=coalesce(pending_id,?) WHERE rowid=?",
                        (title, pending_id, old["rowid"]))
+        if role is not None:
+            _upsert_worker_role(db, actor, thread_id, role, time.time())
     if thread_id:
         usage_starts(actor, {thread_id: pending_id or (old and old["pending_id"])})
     return snapshot(actor)
@@ -454,15 +644,44 @@ def update(actor, *, status, summary=None, thread_id=None, pending_id=None, expe
     return {"status": status} if manual else snapshot(actor)
 
 
-def task_excerpt(request):
+def request_body(request):
     request = (request or "").strip()
     if request.startswith("<codex_delegation>"):
         request = unescape(request.partition("<input>")[2].partition("</input>")[0].strip())
+    return request
+
+
+def task_excerpt(request):
+    request = request_body(request)
     line = request.splitlines()[0] if request else ""
     return line.removeprefix(DISPATCH_PREFIX).strip()[:240]
 
 
+RETURN_LINK = re.compile(r"(?m)^[ \t]*(?:[←↩]\s*)?\[(?:[←↩]\s*)?返回(?:项目)?总讨论\]"
+                         r"\(<?codex://threads/[0-9a-fA-F-]+>?\)[ \t]*\Z")
+
+
+def reply_excerpt(text, limit=180):
+    text = RETURN_LINK.sub("", (text or "").rstrip())
+    lines = []
+    for line in text.splitlines():
+        line = re.sub(r"^(?:#{1,6}\s+|>\s*|[-*]\s+)+", "", line.strip())
+        line = re.sub(r"(\*\*|`+)(.+?)\1", r"\2", line).strip()
+        if line:
+            lines.append(line)
+        if len(lines) == 2:
+            break
+    return " ".join(" ".join(lines).split())[:limit]
+
+
 def observed(row, turn, native, forward=None):
+    status, summary, stamp = _observed_status(row, turn, native, forward)
+    if turn and (status == "review" or (status == "waiting" and summary in ("", task_excerpt(turn["request"])))):
+        summary = reply_excerpt(turn["final_answer"]) or summary
+    return status, summary, stamp
+
+
+def _observed_status(row, turn, native, forward=None):
     status, summary, updated = row["status"], row["summary"], row["updated"]
     if summary in ("执行串已交付，待总线程确认", "总线程已向原串派工"):
         summary = ""
@@ -608,7 +827,7 @@ def usage_starts(owner, workers):
             reused = missing - discovered.keys()
             if reused:
                 first, marked = {}, {}
-                for thread, sent, subject in forward_receipts(owner):
+                for thread, sent, subject, _ in forward_receipts(owner):
                     if thread in reused:
                         first[thread] = min(sent, first.get(thread, sent))
                         if subject:
@@ -641,6 +860,209 @@ def project_usage(owner, rows, native_by_id):
     return usage_for_threads(sources)
 
 
+def project_notes(db, director):
+    tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    roles, decisions = {}, []
+    if "worker_roles" in tables:
+        roles = dict(db.execute("SELECT thread_id,role FROM worker_roles WHERE director=?", (director,)))
+    if "project_decisions" in tables:
+        decisions = db.execute("SELECT * FROM project_decisions WHERE director=? ORDER BY position,created",
+                               (director,)).fetchall()
+    return roles, decisions
+
+
+def sync_context_for_worker(actor):
+    actor = uuid_text(actor)
+    if not panel_db().is_file():
+        return None
+    with readonly(panel_db()) as db:
+        db.execute("BEGIN")
+        worker = db.execute("SELECT director FROM workers WHERE thread_id=? AND status!='archived'", (actor,)).fetchone()
+        if not worker:
+            return None
+        owner = worker["director"]
+        tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if "project_revisions" not in tables:
+            return None
+        revision = db.execute("SELECT rev FROM project_revisions WHERE director=?", (owner,)).fetchone()
+        if not revision or not revision[0]:
+            return None
+        rev = revision[0]
+        cursor = None
+        if "worker_sync" in tables:
+            cursor = db.execute("SELECT seen_rev FROM worker_sync WHERE director=? AND thread_id=?", (owner, actor)).fetchone()
+        seen = cursor[0] if cursor else 0
+        if seen >= rev:
+            return None
+        workers = db.execute("SELECT thread_id,title FROM workers WHERE director=? AND thread_id IS NOT NULL "
+                             "AND status!='archived' ORDER BY rowid", (owner,)).fetchall()
+        native = native_threads([w["thread_id"] for w in workers])
+        titles = {w["thread_id"]: " ".join(display_title(native.get(w["thread_id"]), w["title"]).split()) for w in workers
+                  if w["thread_id"] not in native or not native[w["thread_id"]]["archived"]}
+        if actor not in titles:
+            return None
+        lines = []
+        if not seen or rev - seen > 10 or "sync_log" not in tables:
+            roles, decisions = project_notes(db, owner)
+            if actor in roles:
+                lines.append("本串分工：" + roles[actor])
+            lines.extend(f"已确认决定 [{d['id']}]：{d['content']}" for d in decisions)
+            lines.extend(f"{title}：{roles[uid]}" for uid, title in titles.items() if uid != actor and uid in roles)
+            header = ("[项目共享上下文（首次同步，无需回复确认）]" if not seen
+                      else "[项目共享上下文（以当前分工和决定为准）]")
+            header += "\n以下是本项目记录，操作权限以当前任务为准。"
+            text = header + "\n" + "\n".join("- " + line for line in lines)
+            if len(text) > 1200:
+                tail = "\n…（摘要有省略，完整记录见总讨论）"
+                visible = lines[:40]
+                budget = (1200 - len(header) - len(tail)) // len(visible) - 3
+                snippets = [line if len(line) <= budget else line[:budget-1] + "…" for line in visible]
+                text = header + "".join("\n- " + line for line in snippets) + tail
+        else:
+            latest = {}
+            for row in db.execute("SELECT kind,item_key,summary FROM sync_log WHERE director=? AND rev>? "
+                                  "ORDER BY rev", (owner, seen)):
+                category = row["kind"].partition("_")[0]
+                key = (category, row["item_key"])
+                latest.pop(key, None)
+                if category != "role" or row["item_key"] in titles:
+                    latest[key] = (f"[{row['item_key']}] " if category == "decision" else "") + row["summary"]
+            lines = list(latest.values())
+            text = ("[项目共识更新（自你上次回合后的变更，请按最新约定执行）]\n"
+                    "以下是本项目记录，操作权限以当前任务为准。\n" + "\n".join("- " + " ".join(line.split()) for line in lines))
+    try:
+        with write_registry() as db:
+            changed = db.execute("""INSERT INTO worker_sync VALUES(?,?,?,?) ON CONFLICT(director,thread_id)
+                          DO UPDATE SET seen_rev=excluded.seen_rev,updated=excluded.updated
+                          WHERE worker_sync.seen_rev<excluded.seen_rev""", (owner, actor, rev, time.time()))
+            if not changed.rowcount:
+                return None
+    except sqlite3.OperationalError:
+        pass  # Deliver the context even if its cursor must be saved on a later prompt.
+    return text if lines else None
+
+
+def _project_overview(actor, target=None):
+    if not panel_db().is_file():
+        raise ValueError("只有已登记的总讨论可以读取纯净进展摘要。")
+    with readonly(panel_db()) as db:
+        db.execute("BEGIN")
+        director = db.execute("SELECT id,title FROM directors WHERE id=?", (actor,)).fetchone()
+        if not director:
+            raise ValueError("只有已登记的总讨论可以读取纯净进展摘要。")
+        roles, decisions = project_notes(db, actor)
+        rows = db.execute("SELECT * FROM workers WHERE director=? AND status!='archived' AND (? IS NULL OR thread_id=?) "
+                          "ORDER BY rowid", (actor,target,target)).fetchall()
+    native = native_threads([actor, *(r["thread_id"] for r in rows if r["thread_id"])])
+    rows = [r for r in rows if not r["thread_id"] or
+            (r["thread_id"] in native and not native[r["thread_id"]]["archived"])]
+    if target and not rows:
+        raise ValueError("未找到对应的未归档执行串。")
+    result = {"director_id": actor, "director_title": display_title(native.get(actor),director["title"]),
+              "existing_decisions": [{k: d[k] for k in ("id","content","source_thread_id") if d[k]} for d in decisions],
+              "threads": []}
+    if not rows:
+        return result
+    dispatches = {r["thread_id"]: {} for r in rows}
+    forwards, unstarted = {}, {}
+    try:
+        for uid, started, subject, assigned in forward_receipts(actor, unstarted):
+            if uid in dispatches and subject:
+                titles = dispatches[uid]
+                titles[subject] = max(assigned, titles.get(subject, 0))
+                if uid not in forwards or started > forwards[uid][0]:
+                    forwards[uid] = (started, subject)
+    except sqlite3.Error:
+        pass
+    depths = queue_depths(list(dispatches))
+    for row, turn in observations(rows):
+        uid = row["thread_id"]
+        status, _, stamp = observed(row, turn, native.get(uid), forwards.get(uid))
+        status, _ = queue_status(status, uid, turn, depths, unstarted)
+        titles = dispatches[uid]
+        result["threads"].append({
+            "thread_id": uid, "title": display_title(native.get(uid), row["title"]), "status": status,
+            "role": roles.get(uid, ""), "recent_dispatches": sorted(titles, key=titles.get, reverse=True)[:3],
+            "updated_at": datetime.fromtimestamp(stamp, timezone.utc).isoformat()})
+    return result
+
+
+def director_roster_hint(actor):
+    actor = uuid_text(actor)
+    try:
+        project = _project_overview(actor)
+    except ValueError:
+        return ""
+    rows = project["threads"]
+    count = len(project["existing_decisions"])
+    if not rows and not count:
+        return ""
+    labels = {"waiting":"等你回复", "blocked":"受阻", "running":"进行中", "queued":"排队中", "pending":"排队中",
+              "preparing":"排队中", "unconfirmed":"排队中", "review":"已回复", "completed":"已完成", "ready":"未派工"}
+    lines = ["当前执行串花名册（选串前优先对照，不要先读源码）："]
+    for row in rows[:15]:
+        title = " ".join(row["title"].split())
+        lines.append(f"- {title} [{labels.get(row['status'], '状态待确认')}] ({row['thread_id'] or '正式 ID 待定'})：{row['role'] or '未记分工'}")
+    if len(rows) > 15:
+        lines.append(f"…另有 {len(rows)-15} 个讨论串（完整列表见 show）")
+    if count:
+        lines.append(f"后台已记录 {count} 条跨串决定（可用 show / digest 查看）。")
+    return "\n".join(lines)
+
+
+def _digest_text(text, limit):
+    text = re.sub(r"(?ms)^ *`{3,}(?:diff|patch)\b[^\n]*\n.*?(?:^ *`{3,}[^\n]*$|\Z)", "", text)
+    text = re.split(r"(?m)^diff --git ", text, maxsplit=1)[0]
+    return " ".join(text.split())[:limit]
+
+
+def _digest_turns(db, thread, count, req_limit, reply_limit):
+    turns = db.execute("""SELECT t.turn_id,t.status,json_extract(f.item_json,'$.text') AS reply
+        FROM thread_turns t LEFT JOIN thread_items f ON f.thread_id=t.thread_id AND f.turn_id=t.turn_id
+            AND t.status='completed' AND f.item_id=t.final_agent_item_id AND f.item_type='agentMessage'
+            AND json_extract(f.item_json,'$.phase')='final_answer'
+        WHERE t.thread_id=? AND t.started_at IS NOT NULL ORDER BY t.rollout_ordinal DESC LIMIT ?""", (thread,count))
+    results = []
+    for turn in turns:
+        inputs = db.execute("""SELECT CASE WHEN i.item_type='userMessage' THEN (
+              SELECT group_concat(json_extract(p.value,'$.text'),' ') FROM json_each(i.item_json,'$.content') p
+              WHERE json_type(p.value,'$.text')='text')
+            ELSE json_extract(i.item_json,'$.output') END AS request
+            FROM thread_items i WHERE i.thread_id=? AND i.turn_id=? AND (i.item_type='userMessage'
+            OR (i.item_type='functionCallOutput' AND json_extract(i.item_json,'$.namespace')='codex_app'
+                AND json_extract(i.item_json,'$.name') IN ('create_thread','send_message_to_thread')
+                AND json_extract(i.item_json,'$.output') LIKE '<codex_delegation>%'))
+            ORDER BY i.rollout_ordinal""", (thread, turn["turn_id"]))
+        request = next((body for r in inputs if (body := request_body(r["request"]).removeprefix(DISPATCH_PREFIX).strip())), "")
+        reply = RETURN_LINK.sub("", (turn["reply"] or "").rstrip())
+        results.append({"turn_id": turn["turn_id"], "status": turn["status"],
+                        "request": _digest_text(request, req_limit), "reply": _digest_text(reply, reply_limit)})
+    return results
+
+
+def digest(actor, *, all_threads=False, thread_id=None, turns=None):
+    actor = uuid_text(actor)
+    target = uuid_text(thread_id) if thread_id is not None else None
+    maximum = 5 if target else 3
+    count = turns if turns is not None else (3 if target else 1)
+    if not isinstance(count, int) or count < 1:
+        raise ValueError("回合数须为正整数。")
+    result = _project_overview(actor, target)
+    result["threads"] = [r for r in result["threads"] if r["thread_id"] and
+                         (target or all_threads or r["status"] in ("waiting","blocked","review","running"))]
+    for row in result["threads"]:
+        row["turns"] = []
+    try:
+        with readonly(home() / "thread_history_1.sqlite") as history:
+            history.execute("BEGIN")
+            for row in result["threads"]:
+                row["turns"] = _digest_turns(history, row["thread_id"], min(count, maximum),
+                                              400 if target else 240, 800 if target else 400)
+    except sqlite3.Error:
+        pass
+    return result
+
+
 def snapshot(actor=None, view_key=None, *, include_usage=False):
     if actor is not None:
         actor = uuid_text(actor)
@@ -655,6 +1077,7 @@ def snapshot(actor=None, view_key=None, *, include_usage=False):
         if director:
             own_key = director["view_key"]
             rows = db.execute("SELECT * FROM workers WHERE director=? ORDER BY rowid", (director["id"],)).fetchall()
+            roles_by_thread, decision_rows = project_notes(db, director["id"])
         else:
             column = "thread_id" if actor else "view_key"
             worker = db.execute("SELECT * FROM workers WHERE " + column + "=?", (actor or view_key,)).fetchone()
@@ -667,11 +1090,11 @@ def snapshot(actor=None, view_key=None, *, include_usage=False):
         if view_key is not None and view_key != own_key:
             raise ValueError("配对码与当前聊天不匹配。")
 
-    forwards, unstarted = {}, {}
+    forwards, unstarted, assignment_times = {}, {}, {}
     dispatch_read = False
     if role == "director":
         try:
-            forwards = latest_forwards(director["id"], unstarted=unstarted)
+            forwards = latest_forwards(director["id"], unstarted=unstarted, assignment_times=assignment_times)
             dispatch_read = True
         except sqlite3.OperationalError:
             pass  # Keep the explicit registry available without native history.
@@ -701,8 +1124,26 @@ def snapshot(actor=None, view_key=None, *, include_usage=False):
             result["threads"][-1]["queued_count"] = depth
         if can_change and (turn_id := status_turn(status, turn, native, depth)):
             result["threads"][-1]["status_turn_id"] = turn_id
+        if role == "director" and row["thread_id"] in roles_by_thread:
+            result["threads"][-1]["role"] = roles_by_thread[row["thread_id"]]
         if row["thread_id"] in forwards:
-            result["threads"][-1]["latest_assignment"] = forwards[row["thread_id"]][1]
+            _, subject = forwards[row["thread_id"]]
+            sent = assignment_times[row["thread_id"]]
+            result["threads"][-1]["latest_assignment"] = subject
+            result["threads"][-1]["latest_assignment_at"] = datetime.fromtimestamp(sent, timezone.utc).isoformat()
+    if role == "director":
+        result["decisions"] = []
+        titles = {row["thread_id"]: row["title"] for row in result["threads"]}
+        titles[director["id"]] = director_title
+        for decision in decision_rows:
+            item = {"id": decision["id"], "content": decision["content"],
+                    "updated_at": datetime.fromtimestamp(decision["updated"], timezone.utc).isoformat()}
+            sid = decision["source_thread_id"]
+            if sid:
+                item.update(source_thread_id=sid, source_title=titles.get(sid, "来源讨论"))
+                if sid in native_by_id and native_by_id[sid]["archived"]:
+                    item["source_archived"] = True
+            result["decisions"].append(item)
     # Keep the fallback labels current for existing panels. A rename is not task activity.
     if director_title != director["title"] or renamed_workers:
         with write_registry() as db:
@@ -731,15 +1172,22 @@ def observations(rows):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["init", "track", "update", "show", "setup", "candidates", "adopt", "invocation"])
+    parser.add_argument("action", choices=["init", "track", "update", "show", "setup", "candidates", "adopt", "invocation", "role", "roles", "decision", "digest"])
     parser.add_argument("payload", nargs="?")
     parser.add_argument("--stdin", action="store_true", help="从标准输入读取 UTF-8 标题或 JSON")
     parser.add_argument("--alongside", action="store_true", help="用户明确选择另设独立总讨论")
+    parser.add_argument("--all", action="store_true", help="读取全部未归档执行串摘要（仅用于 digest）")
+    parser.add_argument("--thread", help="仅读取指定执行串摘要（仅用于 digest）")
+    parser.add_argument("--turns", type=int, help="每串最近回合数（仅用于 digest）")
     args = parser.parse_args()
+    if (args.all or args.thread is not None or args.turns is not None) and args.action != "digest":
+        parser.error("--all、--thread、--turns 仅用于 digest")
+    if args.action == "digest" and args.payload is not None:
+        parser.error("digest 不接受位置参数")
     if args.alongside and args.action != "init":
         parser.error("--alongside 仅用于 init")
-    if args.stdin and (args.payload is not None or args.action not in ("init", "track", "update", "adopt")):
-        parser.error("--stdin 仅用于 init、track、update 或 adopt，且不能和位置参数一起使用。")
+    if args.stdin and (args.payload is not None or args.action not in ("init", "track", "update", "adopt", "role", "roles", "decision")):
+        parser.error("--stdin 仅用于 init、track、update、adopt、role、roles 或 decision，且不能和位置参数一起使用。")
     raw = sys.stdin.buffer.read().decode("utf-8") if args.stdin else args.payload
     actor = uuid_text(os.environ.get("CODEX_THREAD_ID"))
     if args.action == "invocation":
@@ -754,13 +1202,28 @@ def main():
                 result = panel_onboarding.scope(actor, db, candidates=args.action == "candidates")
     elif args.action == "show":
         result = snapshot(actor)
+    elif args.action == "digest":
+        result = digest(actor, all_threads=args.all, thread_id=args.thread, turns=args.turns)
+    elif args.action == "roles":
+        payload = json.loads(raw or "null")
+        if isinstance(payload, dict):
+            result = set_worker_roles(actor, payload.get("roles"), only_missing=payload.get("only_missing", False))
+        else:
+            result = set_worker_roles(actor, payload)
     elif args.action == "init":
         result = initialize(actor, raw, alongside=args.alongside)
     else:
         payload = json.loads(raw or "{}")
         if not isinstance(payload, dict):
             raise ValueError("参数应为 JSON 对象。")
-        result = (track if args.action == "track" else update)(actor, **payload)
+        if args.action == "decision":
+            op = payload.pop("action", "upsert")
+            if op not in ("upsert", "delete"):
+                raise ValueError("decision 的 action 仅支持 upsert 或 delete。")
+            command = upsert_decision if op == "upsert" else delete_decision
+        else:
+            command = {"track": track, "update": update, "role": set_worker_role}[args.action]
+        result = command(actor, **payload)
     print(json.dumps(result, ensure_ascii=False))
 
 

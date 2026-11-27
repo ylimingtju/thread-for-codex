@@ -57,7 +57,7 @@ h1,p{margin:0}h1{font-weight:650;overflow-wrap:anywhere}
 .bucket{margin-top:8px;border-radius:17px;--label:var(--running-label)}
 .bucket[data-group="waiting"]{--label:var(--wait-label)}
 .bucket[data-group="completed"]{--label:var(--done-label)}
-.bucket[data-group="review"],.bucket[data-group="pending"]{--label:var(--sub)}
+.bucket[data-group="review"]{--label:var(--sub)}
 .bucket>summary{padding:0 11px;border-radius:16px;color:var(--label);font-weight:670}
 .bucket[open]>summary{border-radius:16px 16px 0 0}
 .bucket>summary:hover{background:var(--soft)}
@@ -95,7 +95,7 @@ button.row-content:hover{background:var(--soft)}
 .row-meta{display:flex;flex-wrap:wrap;gap:3px 8px;align-items:baseline;color:var(--sub);font-size:12px}
 .row-meta:empty{display:none}
 .row-state{
-  border:1px solid var(--line);border-radius:6px;padding:0 5px;
+  flex:none;font-size:12px;font-weight:500;line-height:1.4;border:1px solid var(--line);border-radius:6px;padding:1px 6px;
   background:light-dark(#dce6f1a6,#6c86af42);color:light-dark(#485775,#cad4ef);
 }
 #empty,#status,#tip,.pair-hint{font-size:12px;color:var(--sub)}#empty{padding:8px 0}
@@ -107,6 +107,10 @@ button.row-content:hover{background:var(--soft)}
 #pair button{border-radius:5px;background:var(--soft);padding:6px 10px;white-space:nowrap}
 #fallback{border-top:1px solid var(--line);font-size:12px;color:var(--sub)}#url{font:12px ui-monospace,monospace}
 #tip code{user-select:all;overflow-wrap:anywhere}#pair-toggle{font-size:12px} .pair-hint{margin-top:4px}
+.ready-drawer{margin-top:8px;border:1px dashed var(--line);border-radius:12px;color:var(--sub)}
+.ready-drawer>summary{display:flex;align-items:center;gap:8px;padding:8px 11px;font-size:13px;list-style:none}
+.ready-drawer>summary::-webkit-details-marker{display:none}
+.ready-drawer[open]>summary .arrow{transform:translateY(-2px) rotate(45deg)}
 @media(max-width:300px){#full{padding:11px 8px}#entry{flex-wrap:wrap}.row{margin-inline:7px;width:calc(100% - 14px)}}
 </style>
 </head>
@@ -119,7 +123,12 @@ button.row-content:hover{background:var(--soft)}
 <section id="full" hidden aria-label="项目讨论串">
 <header><h1><img src="data:image/png;base64,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" alt=""><span id="title"></span></h1><button type="button" id="back" class="back" hidden>‹ 返回项目总讨论</button></header>
 <p id="state-notice" role="status"></p>
-<div id="buckets"></div><p id="empty" hidden>还没有已登记的讨论串。</p>
+<div id="buckets"></div>
+<details id="ready-drawer" class="ready-drawer" hidden>
+<summary>未派工旧串 <span id="ready-count" class="count"></span><span class="arrow" aria-hidden="true"></span></summary>
+<div id="ready-rows"></div>
+</details>
+<p id="empty" hidden>还没有已登记的讨论串。</p>
 <details id="usage" hidden>
 <summary><span>Token 用量</span><span id="usage-bar" aria-hidden="true"></span><span id="usage-total"></span><span class="arrow" aria-hidden="true"></span></summary>
 <div class="usage-scroll" id="usage-breakdown" hidden><table class="usage-table" aria-label="各模型累计 Token 用量"><thead><tr><th scope="col">模型</th><th scope="col">输入</th><th scope="col">输出</th><th scope="col">合计</th></tr></thead><tbody id="usage-rows"></tbody></table></div>
@@ -137,10 +146,9 @@ const view = '__DIRECTOR_VIEW__';
 const receiptView = view === 'receipt';
 const inlineEntry = view !== 'panel';
 const embedded = window.parent !== window;
-const groups = [['waiting','等你回复'],['running','进行中'],['pending','待执行'],
-                ['review','已回复'],['completed','已完成'],['ready','待派工']];
-const groupFor = {blocked:'waiting',preparing:'pending',queued:'pending',unconfirmed:'pending'};
-const states = {preparing:'准备中',pending:'待开始',unconfirmed:'状态待确认',blocked:'受阻'};
+const groups = [['waiting','等你回复'],['running','进行中'],['review','已回复'],['completed','已完成']];
+const groupFor = {blocked:'waiting',preparing:'running',pending:'running',queued:'running',unconfirmed:'running'};
+const states = {preparing:'准备中',pending:'待开始',queued:'排队中',unconfirmed:'状态待确认',blocked:'受阻'};
 const formatTime = new Intl.DateTimeFormat('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
 const shortTokens = new Intl.NumberFormat('en-US',{maximumFractionDigits:1});
 let data, mode=inlineEntry?'inline':'fullscreen', sequence=0, epoch=0, bridgeReady=false;
@@ -172,6 +180,7 @@ async function tool(name,args={}){
 function clearView(){
   ++epoch;data=null;signature=null;expanded.clear();panelHelp=false;
   usageSignature=null;$('usage').open=false;
+  $('ready-drawer').open=false;$('ready-drawer').hidden=true;$('ready-rows').replaceChildren();
   $('receipt').replaceChildren();$('receipt').hidden=true;
   $('buckets').replaceChildren();$('state-notice').textContent='';$('pair-key').hidden=true;$('pair-key').textContent='';
   $('fallback').hidden=$('entry').hidden=$('full').hidden=$('tip').hidden=true;$('pair').hidden=false;
@@ -221,6 +230,7 @@ function makeRow(row){
   const box=el('div','row'), content=el(canOpen?'button':'div','row-content'), head=el('span','row-head');
   const subject=el('span','subject',row.title);
   subject.title=row.title;head.append(subject);
+  if(Object.hasOwnProperty.call(states,row.status))head.append(el('span','row-state',states[row.status]));
   if(canOpen){
     content.type='button';content.dataset.thread=row.thread_id;content.onclick=()=>openChat(row.thread_id,row.title);
     const action=el('span','row-action',({waiting:'去回复',completed:'追问'})[row.status] || '');
@@ -229,11 +239,10 @@ function makeRow(row){
   }
   content.append(head);
   if(row.summary)content.append(el('span','row-copy',row.summary));
-  if(row.queued_count>0)content.append(el('span','row-queue','原生队列 '+row.queued_count+' 项'));
-  const footer=el('span','row-meta'), date = new Date(row.updated_at);
-  if(!['waiting','running','review','completed','queued','ready'].includes(row.status)){
-    footer.append(el('span','row-state',states[row.status] || '状态待确认'));
+  if(row.queued_count>0 && (row.status!=='queued'||row.queued_count>1)){
+    content.append(el('span','row-queue','原生队列 '+row.queued_count+' 项'));
   }
+  const footer=el('span','row-meta'), date = new Date(row.updated_at);
   if(row.updated_at && Number.isFinite(date.getTime())){
     const time=el('time','',formatTime.format(date));time.dateTime=date.toISOString();time.title=date.toLocaleString('zh-CN');footer.append(time);
   }
@@ -339,7 +348,7 @@ function render(){
   $('entry-open').textContent=worker?'返回项目总讨论':'在右侧打开 ›';
   $('entry-open').title=worker?data.director_title:'';
   $('back').hidden=!worker;$('back').title=data.director_title;$('title').textContent=data.director_title;
-  if(!$('fallback').hidden){
+  if(!$('fallback').hidden && $('fallback').dataset.thread){
     const id=$('fallback').dataset.thread;
     const title=id===data.director_id?data.director_title:data.threads.find(row=>row.thread_id===id)?.title;
     if(title)fallbackTitle(title);
@@ -354,11 +363,18 @@ function render(){
     if(!worker)renderUsage(data.token_usage);
   }
   const visible=data.threads.filter(row=>row.status!=='archived');
-  const sig=JSON.stringify(visible);
+  const sig=JSON.stringify(visible.map(r=>[r.thread_id,r.pending_id,r.title,r.status,r.summary,r.updated_at,r.queued_count,r.status_turn_id]));
   if(sig===signature)return;
   signature=sig;
   const lists=Object.fromEntries(groups.map(([key])=>[key,[]]));
-  for(const row of visible) (lists[groupFor[row.status] || row.status] ?? lists.pending).push(row);
+  const readyThreads=visible.filter(row=>row.status==='ready');
+  const activeThreads=visible.filter(row=>row.status!=='ready');
+  for(const row of activeThreads)(lists[groupFor[row.status] || row.status] ?? lists.running).push(row);
+  const drawer=$('ready-drawer');
+  drawer.hidden=worker || !readyThreads.length;
+  drawer.open=expanded.get('ready') ?? false;
+  $('ready-count').textContent=String(readyThreads.length);
+  $('ready-rows').replaceChildren(...(worker?[]:readyThreads.map(makeRow)));
   if(!worker){
     entryLabel.textContent=lists.waiting.length?lists.waiting.length+' 项等你回复':visible.length+' 个讨论串';
     entryLabel.title='';
@@ -369,7 +385,6 @@ function render(){
   const focusedMenu=focus?.statusMenu,focusedId=focusedMenu || focus?.thread,focusedGroup=focus?.group;
   const fragment=document.createDocumentFragment();
   groups.forEach(([key,title])=>{
-    if((key==='ready' || key==='pending') && !lists[key].length)return;
     const section=el('details','bucket');section.open=expanded.get(key) ?? (key!=='completed');section.dataset.group=key;
     const label=el('summary');label.dataset.group=key;
     label.append(el('span','mark'),el('span','',title),el('span','count',String(lists[key].length)),el('span','arrow'));
@@ -451,6 +466,7 @@ $('pair-toggle').onclick=()=>{
   $('pair-toggle').textContent=field.hidden?'显示配对码':'隐藏配对码';
 };
 $('back').onclick=()=>openChat(data.director_id,data.director_title);
+$('ready-drawer').ontoggle=()=>expanded.set('ready',$('ready-drawer').open);
 $('usage').ontoggle=()=>{
   if(!$('usage').open || matchMedia('(prefers-reduced-motion: reduce)').matches)return;
   for(const fill of $('usage-rows').querySelectorAll('.usage-track>i')){
@@ -459,7 +475,7 @@ $('usage').ontoggle=()=>{
 };
 $('copy').onclick=async()=>{
   try{await navigator.clipboard.writeText($('url').value);message('已复制聊天链接。')}
-  catch{$('url').select();message('按 ⌘C 复制所选链接。')}
+  catch{$('url').select();message('请用系统复制快捷键复制所选链接。')}
 };
 $('pair').onsubmit=async(e)=>{
   e.preventDefault();const entered=$('key').value.trim();if(!entered)return;

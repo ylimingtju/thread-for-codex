@@ -5,7 +5,7 @@ import sqlite3
 import sys
 
 from panel_onboarding import explicit_reference
-from panel_state import PANEL_LINK, panel_db, readonly, uuid_text
+from panel_state import PANEL_LINK, director_roster_hint, panel_db, readonly, sync_context_for_worker, uuid_text
 
 
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
@@ -83,13 +83,17 @@ def hook_result(event):
             '在正文后空一行，再原样附上下列链接一次。不要只发链接，不要重做任务或调用任何工具。'
             '如果看不到完整原文，请保留此前的交付，不要凭记忆重写。\n' + footer
         )}
-    role_hint = (
-        '总讨论动手前先定归属。协调、确认交付、直接引用唯一已知答案可自办。新调查、判断、设计、计算、审查、运行或修改默认派工，明确要求亲办除外。'
-        '按点名或链接、已登记职责和近期相关派工选串，歧义只问冲突，交接保留本轮交付与权限边界。独立任务先按真实 hostId、threadId 取 wait_threads(timeoutMs: 0) 快照。'
-        '确认空闲且无待启动或排队任务才直发，否则对获授权的本地配对串用 enqueue_task，取得条目 ID 才报已排队。仅明确要求立即补正同一任务才追加。'
-        '每批 show_receipt 一次即结束，明确要求才持续等待。派工答疑确认本轮后默认只列原串链接。\n'
-        if row['id'] == actor else ''
-    )
+    role_hint = ''
+    if row['id'] == actor:
+        role_hint = (
+            '总讨论先定归属。可协调、汇总、核对交付及引用明确答案。除非用户本轮点名亲办，严禁总讨论读/搜业务源码、改项目文件或跑项目测试，也不要为写派工说明先翻源码。'
+            '查进展与比对结果先用 digest。交付用1–3句讲明结论、跨串冲突和待拍板项，附原串链接。按点名、长期分工和近期派工选串，用 role/roles/decision 后台维护共识。'
+            '独立任务先用实际 hostId、threadId 取 wait_threads(timeoutMs: 0)，空闲且无排队才直发，否则用 enqueue_task。每批 show_receipt 一次即结束，明确要求才持续等待。\n'
+        )
+    if name == 'UserPromptSubmit':
+        context = director_roster_hint(actor) if row['id'] == actor else sync_context_for_worker(actor)
+        if context:
+            role_hint += context + '\n'
     return {'hookSpecificOutput': {
         'hookEventName': name,
         'additionalContext': start_hint + role_hint + '每条最终答复（含追问）末尾空一行，单列以下链接一次。中途进展省略。\n' + footer,

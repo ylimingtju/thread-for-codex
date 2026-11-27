@@ -7,12 +7,12 @@ Inspired by Claude Projects, Thread for Codex lets you delegate tasks from one p
 
 | 系统 | 可下载版本 | 安装包 |
 | --- | --- | --- |
-| macOS | **v1.3** | [下载 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.3/thread-for-codex-macos.zip) |
+| macOS | **v1.4.0** | [下载 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.4.0/thread-for-codex-macos.zip) |
 | Windows | **v1.1.0** | [下载 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip) |
 
-[安装说明](#安装与启动) · [v1.3 更新说明](CHANGELOG.md#v13--macos) · [早期版本实测与常见问题](docs/release-v1.1.0.md#zh)
+[安装说明](#安装与启动) · [v1.4.0 更新说明](CHANGELOG.md#v140--macos) · [早期版本实测与常见问题](docs/release-v1.1.0.md#zh)
 
-下文的排队、首次设置和面板操作说明适用于 macOS v1.3。Windows 当前发布版本为 v1.1.0。
+下文的派工、项目决定同步和面板操作说明适用于 macOS v1.4.0。Windows 当前发布版本为 v1.1.0。
 
 ![Thread for Codex：主线统筹，分线追问](docs/images/github-cover.jpg)
 
@@ -22,15 +22,13 @@ https://github.com/user-attachments/assets/1d1d60cf-e0bc-42ef-a01a-5aa561a90f22
 
 Thread for Codex 是适用于 macOS 和 Windows 的 Codex 项目讨论串插件。比如做一份城市步行指南，可以在总讨论里定方向，让一个串规划路线、另一个串核对地图。路线串需要你选河畔还是老城时，问题会直接出现在右侧。点标题即可在原串答复。
 
-![v1.3 右栏显示排队任务、已回复分组和状态菜单](docs/images/panel-preview-v1.3.png)
-
-*由 v1.3 面板渲染，项目、任务和用量均为示例。*
+总讨论会记录各串的长期分工和已确认决定。新任务按分工派发，续改会参考最近一次派工。执行串首次提问时收到项目摘要，之后随提问同步变更。
 
 ## 安装与启动
 
 需要已登录的 Codex 桌面端、支持 `codex plugin` 的 Codex 命令行，以及 Python 3.9 或以上。Python 部分只使用标准库。
 
-1. 从上方下载对应系统的 ZIP 并解压。macOS 也可用 Git 检出标签 `v1.3`。Windows ZIP 使用经过 Windows 11 测试的提交 `5bd50f4`。在源码根目录运行对应命令。macOS 用户请选一个准备长期保留的目录。
+1. 从上方下载对应系统的 ZIP 并解压。macOS 也可用 Git 检出标签 `v1.4.0`。Windows ZIP 使用经过 Windows 11 测试的提交 `5bd50f4`。在源码根目录运行对应命令。macOS 用户请选一个准备长期保留的目录。
 
    | 系统 | 安装命令 |
    | --- | --- |
@@ -53,13 +51,14 @@ Thread for Codex 是适用于 macOS 和 Windows 的 Codex 项目讨论串插件�
 
 新建总讨论时，如果你没有选择推理强度，插件默认使用 `xhigh`（模型支持时）。已有聊天沿用当前设置。你可以随时调整强度，各档都能正常派工、追问和验收。
 
-升级时，从上方下载本系统的安装包，解压后在源码根目录重新运行安装命令。macOS Git 用户可用 `git fetch --tags` 获取标签，再检出 `v1.3`。macOS 安装后，请在 Codex「设置 → Hooks」审查并信任插件的三条规则，然后在当前任务结束后退出并重新打开 Codex。已有执行串可以直接追问。Windows 安装器会在 Codex 数据目录下生成本机插件源，并记录安装所用的 Python 路径。移动或更换 Python 后，用新路径重新运行安装程序。
+升级时，从上方下载本系统的安装包，解压后在源码根目录重新运行安装命令。macOS Git 用户可用 `git fetch --tags` 获取标签，再检出 `v1.4.0`。macOS 安装后，请在 Codex「设置 → Hooks」审查并信任插件的三条规则，然后在当前任务结束后退出并重新打开 Codex。已有执行串可以直接追问。Windows 安装器会在 Codex 数据目录下生成本机插件源，并记录安装所用的 Python 路径。移动或更换 Python 后，用新路径重新运行安装程序。
 
 ## 在侧栏里能做什么
 
 | 你想做的事 | 怎么做 |
 | --- | --- |
-| 查看当前进度 | 「等你回复」列出待答或受阻的任务，「进行中」显示正在执行的任务，「待执行」显示准备、排队或尚未确认的任务，「已回复」显示本轮已有答复的任务。 |
+| 查看当前进度 | 右栏分为「等你回复」「进行中」「已回复」「已完成」。待答问题和答复摘要显示在相应条目下，排队等状态标在标题旁。 |
+| 查看接入的未派工旧串 | 展开底部的「未派工旧串」。 |
 | 标记完成或重新打开 | 在「已回复」或「已完成」的标题旁点「⋯」。重新打开回到「已回复」，保留摘要，原串收到新追问后才开始新一轮。 |
 | 继续用旧串 | 在总讨论里点名已用过的串，同名时附聊天链接。派工成功后，它会出现在侧栏，保留原来的上下文。 |
 | 追问已完成的任务 | 展开「已完成」，点标题进入原生聊天，用原来的输入框继续问。新一轮追问会让该串回到「进行中」。归档由你决定。 |
