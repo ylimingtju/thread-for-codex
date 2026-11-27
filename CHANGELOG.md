@@ -6,19 +6,27 @@
 
 ### 简体中文
 
-- **按长期分工派工。** 新任务和跨阶段任务优先按执行串的长期职责分派。紧接上一轮的续改优先核对最近一次派工。
-- **共享项目决定。** 总讨论维护执行串分工和已确认决定，可为决定关联来源。执行串首次提问时收到当前项目摘要，后续同步新增、修改和撤销的条目。间隔较久时会刷新当前摘要。
-- **总讨论负责协调。** 查进展时先读各串的最近问答摘要。验收后简述结论、跨串影响和需用户决定的事项，并附原串链接。新调查、源码修改和测试默认由执行串处理。
-- **右栏改为四组。** 「等你回复」「进行中」「已回复」「已完成」集中显示。排队等状态标在对应条目上，「已回复」优先显示答复摘要，「等你回复」显示待答的问题。未派工旧串和 Token 用量可在底部展开。
+v1.3 已经能把工作派给不同的聊天，并显示执行状态。项目做久了，麻烦在于换个阶段要重新交代谁负责什么，改一条决定要记得挨个转告，查进度还得点开好几个串。v1.4.0 解决的是这些反复交接的问题。
+
+以做一份城市步行指南为例：
+
+- **换了任务，谁继续做？** 上次派的是改文案，这次要核对步行路线。总讨论按登记的长期分工找到路线串。要是你说「继续改刚才那段导语」，就优先回到上一轮接手的文案串。
+- **决定改了，谁还在用旧方案？** 总讨论已拍板「河岸步道封闭，改走老街」，路线串和地图串的聊天里可能还留着旧路线。现在总讨论只需登记一次决定，还可附上定稿的原串。执行串首次收到提问时取得项目摘要，后续在新的提问回合中同步新增、修改或撤销的决定。
+- **各串做到了哪一步，还要逐个翻吗？** 总讨论先读各串最近的问答摘要，验收后直接说明结果、哪些后续工作受影响、还有什么需要你决定，并附原串链接。需要重新调查、改代码或跑测试时，仍由相应执行串接手。
+- **“已回复”之后，我该看哪里？** 右栏按「等你回复」「进行中」「已回复」「已完成」分组。路线串在等你选方案时，条目显示具体问题。它交回路线后，条目优先显示答复摘要。排队状态标在条目上，未派工的旧串和 Token 用量可在底部展开。
 
 macOS 解压 ZIP 后运行 `python3 install.py`。本机安装版的右栏交互已在隔离窗口核对，登录桌面后的跨串同步尚未实测。Windows 当前可下载版本为 v1.1.0。
 
 ### English
 
-- **Route work by standing responsibilities.** New requests and tasks that move to another stage go to the worker responsible for that area. For a direct follow-up, the main chat checks the most recent assignment first.
-- **Share project decisions.** The main chat records worker responsibilities and confirmed decisions, with optional source links. Workers receive a summary on their first prompt and additions, edits, and removals on later prompts. A worker that has missed several revisions receives a current summary.
-- **Keep coordination in the main chat.** The main chat checks recent question and answer summaries for progress. After reviewing a delivery, it gives the result, effects on other threads, and any decisions for the user, with links to the original chats. Workers handle new investigations, source edits, and tests by default.
-- **Four sidebar groups.** Waiting for you, In progress, Replied, and Completed appear on one page. Queue and related states appear on each row. Replied rows show the latest answer summary when available, and waiting rows show the question to answer. Expand the sections at the bottom to see unassigned chats and token usage.
+v1.3 could assign work to separate chats and show their status. As a project went on, you still had to explain who owned the next step, pass a changed decision to each worker, and reopen several chats to see where things stood. v1.4.0 addresses those repeated handoffs.
+
+Take a city walking guide as an example:
+
+- **Who owns the next task?** The last assignment was a copy edit. This time you want to check the walking route. The main chat uses the recorded responsibilities to find the route planner. If you say “Keep editing that introduction,” it checks the last assignment and returns to the copy editor.
+- **Who is still working from the old decision?** The main chat agreed to use the old town because the riverside path is closed. The route and map chats may still have the old route. The main chat records the decision once and can link to where it was made. Workers receive a project summary on their first prompt, then get additions, edits, and removals on later prompts.
+- **Do I have to reopen every chat for a status check?** The main chat checks recent question and answer summaries first. After it reviews a delivery, it reports the result, any effects on other work, and what still needs your decision, with links to the original chats. The relevant workers still handle new investigations, code changes, and tests.
+- **What do I need to act on?** The sidebar has four groups: Waiting for you, In progress, Replied, and Completed. If the route planner needs your choice, the row shows the question. After it replies, the row shows the answer summary when available. Queued work is marked on the row, and unassigned chats and token usage can be expanded at the bottom.
 
 Extract the macOS ZIP and run `python3 install.py`. The installed sidebar was checked in an isolated window. Live desktop sync across chats has yet to be tested. The current Windows download is v1.1.0.
 
