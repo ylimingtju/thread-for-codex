@@ -2,37 +2,35 @@
 
 ## v1.4.0 · macOS
 
-[macOS v1.4.0 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.4.0/thread-for-codex-macos.zip) · [Windows v1.1.0 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip)
+[macOS v1.4.0 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.4.0/thread-for-codex-macos.zip) · [Windows v1.2.1 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-windows.zip)
 
-### 简体中文
+### **简体中文（v1.3 → v1.4 更新说明）**
 
-v1.3 已经能把工作派给不同的聊天，并显示执行状态。项目做久了，麻烦在于换个阶段要重新交代谁负责什么，改一条决定要记得挨个转告，查进度还得点开好几个串。v1.4.0 解决的是这些反复交接的问题。
+v1.3 已经能帮你把任务派给不同的执行串并跟进状态，但在长期项目里用下来，真正磨人的是**反复操心上下文、总讨论越权动手，以及查进展太费劲**。v1.4 重点解决这四个痛点：
 
-以做一份城市步行指南为例：
+- **以前：聊久了容易选错串，总讨论还常忍不住自己干活。** 项目串一多，总讨论容易忘掉每个串长期负责什么；有时为了先摸清情况去翻代码，翻着翻着就把本该派出去的活自己干了。 **现在**：总讨论会在后台默默记下各串的长期分工，每轮都能直接看到现成的执行串名单，选串更稳；同时也收紧了边界——查改代码和跑测试明确交给执行串，总讨论专心管分配和统筹。
+- **以前：项目里改了决定，得靠你自己挨个转告其他串。** 在总讨论拍板换了方案，别的执行串还停留在旧上下文里，下次追问时经常要自己重复交代一遍，很容易漏。 **现在**：总讨论统一在后台记录项目的重要决定（包括后续修改和作废）。其他执行串下次收到新消息时，会自动同步最新变动——不需要你手动维护任何资料表，也不会在没变化时反复塞冗余背景。
+- **以前：总讨论收尾只甩链接，想摸清进展得自己挨个点开翻。** 上个版本里，执行串答完后总讨论通常只列一个链接；几个串并行推进时，想看谁出了结论、彼此有没有冲突，只能自己逐个串往上翻。 **现在**：总讨论可以直接读取各串精炼的问答摘要。核对交付或汇报进度时，会直接用几句话讲清核心结论、是否影响其他任务，以及需要你拍板的地方，再附原串链接方便随时细看。
+- **以前：右侧面板分组太碎，而且只看得到“派了啥”，看不到“回了啥”。** v1.3 右栏有 6 个分组，略显杂乱；并且串回复完以后，卡片上往往还显示着当初的派工标题，不点进去根本不知道它答了什么或卡在哪。 **现在**：右栏精简为「等你回复、进行中、已回复、已完成」四类——排队中的任务直接标在对应条目旁，还没派过工的旧串收进底部折叠区；「等你回复」和「已回复」优先直接显示执行串的最新答复摘要，扫一眼就知道先处理哪一条。
 
-- **换了任务，谁继续做？** 上次派的是改文案，这次要核对步行路线。总讨论按登记的长期分工找到路线串。要是你说「继续改刚才那段导语」，就优先回到上一轮接手的文案串。
-- **决定改了，谁还在用旧方案？** 总讨论已拍板「河岸步道封闭，改走老街」，路线串和地图串的聊天里可能还留着旧路线。现在总讨论只需登记一次决定，还可附上定稿的原串。执行串首次收到提问时取得项目摘要，后续在新的提问回合中同步新增、修改或撤销的决定。
-- **各串做到了哪一步，还要逐个翻吗？** 总讨论先读各串最近的问答摘要，验收后直接说明结果、哪些后续工作受影响、还有什么需要你决定，并附原串链接。需要重新调查、改代码或跑测试时，仍由相应执行串接手。
-- **“已回复”之后，我该看哪里？** 右栏按「等你回复」「进行中」「已回复」「已完成」分组。路线串在等你选方案时，条目显示具体问题。它交回路线后，条目优先显示答复摘要。排队状态标在条目上，未派工的旧串和 Token 用量可在底部展开。
+macOS 解压 ZIP 后运行 `python3 install.py`。本机安装版的右栏交互已在隔离窗口核对，登录桌面后的跨串同步尚未实测。
 
-macOS 解压 ZIP 后运行 `python3 install.py`。本机安装版的右栏交互已在隔离窗口核对，登录桌面后的跨串同步尚未实测。Windows 当前可下载版本为 v1.1.0。
+---
 
-### English
+### **English (v1.3 → v1.4 Release Notes)**
 
-v1.3 could assign work to separate chats and show their status. As a project went on, you still had to explain who owned the next step, pass a changed decision to each worker, and reopen several chats to see where things stood. v1.4.0 addresses those repeated handoffs.
+v1.3 already let you delegate tasks across separate worker chats and track their status. Over longer projects, though, the real friction came from **repeating context by hand, the main chat stepping in to do worker tasks itself, and opening multiple threads just to see where things stood**. v1.4 focuses on fixing those four pain points:
 
-Take a city walking guide as an example:
+- **Before: Easy to pick the wrong chat—or watch the main chat take over the work.** As threads piled up, the main chat could lose track of who owned what; and when it peeked at code to prepare a handoff, it often ended up doing the work itself instead of delegating. **Now**: The main chat quietly tracks each worker's long-term role in the background and sees an up-to-date roster on every turn. Code inspection, edits, and tests stay with the workers, while the main chat stays focused on routing and coordination.
+- **Before: Changing a decision meant manually reminding every other chat.** Once you changed direction in the main chat, parallel workers were still working off the old plan, forcing you to copy-paste updates or risk conflicting work. **Now**: The main chat maintains shared project decisions (including edits and removals) behind the scenes. Whenever another worker gets its next prompt, only the latest changes are synced in automatically—no forms to maintain, and no extra clutter when nothing has changed.
+- **Before: The main chat only handed back links, leaving you to dig through threads.** In v1.3, confirmed replies usually came back as bare thread links, so checking progress across several parallel chats meant opening each one and scrolling through long logs. **Now**: The main chat reads concise Q&A digests from worker threads. When reviewing deliveries or reporting progress, it summarizes the key outcome, cross-thread impacts, and open decisions in a few lines—still linking to the original threads whenever you want the full details.
+- **Before: The sidebar felt cluttered and only showed what you asked, not what came back.** With six status groups, the sidebar was noisy, and replied items often still showed your original dispatch title rather than the worker's actual answer or question. **Now**: The sidebar is streamlined to four groups—**Waiting for you**, **In progress**, **Replied**, and **Completed**. Queued work is badged right on the item, unassigned legacy chats sit neatly collapsed at the bottom, and **Waiting for you** / **Replied** rows preview the worker's actual reply so you can tell at a glance what needs attention first.
 
-- **Who owns the next task?** The last assignment was a copy edit. This time you want to check the walking route. The main chat uses the recorded responsibilities to find the route planner. If you say “Keep editing that introduction,” it checks the last assignment and returns to the copy editor.
-- **Who is still working from the old decision?** The main chat agreed to use the old town because the riverside path is closed. The route and map chats may still have the old route. The main chat records the decision once and can link to where it was made. Workers receive a project summary on their first prompt, then get additions, edits, and removals on later prompts.
-- **Do I have to reopen every chat for a status check?** The main chat checks recent question and answer summaries first. After it reviews a delivery, it reports the result, any effects on other work, and what still needs your decision, with links to the original chats. The relevant workers still handle new investigations, code changes, and tests.
-- **What do I need to act on?** The sidebar has four groups: Waiting for you, In progress, Replied, and Completed. If the route planner needs your choice, the row shows the question. After it replies, the row shows the answer summary when available. Queued work is marked on the row, and unassigned chats and token usage can be expanded at the bottom.
-
-Extract the macOS ZIP and run `python3 install.py`. The installed sidebar was checked in an isolated window. Live desktop sync across chats has yet to be tested. The current Windows download is v1.1.0.
+Extract the macOS ZIP and run `python3 install.py`. The installed sidebar was checked in an isolated window. Live desktop sync across chats has yet to be tested.
 
 ## v1.3 · macOS
 
-[macOS v1.3（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.3/thread-for-codex-macos.zip) · [Windows v1.1.0（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip)
+[macOS v1.3（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.3/thread-for-codex-macos.zip) · [Windows v1.2.1（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-windows.zip)
 
 ### 中文
 
@@ -43,7 +41,7 @@ Extract the macOS ZIP and run `python3 install.py`. The installed sidebar was ch
 - **右栏区分已回复与已完成。** 等待答复和受阻任务归到「等你回复」，排队和准备中的任务归到「待执行」。每条显示一行标题、最多两行摘要和时间，优先用本轮登记的进展或交付，缺少摘要时显示本轮任务首行。在标题旁的「⋯」菜单标为已完成，或在「已完成」中重新打开。重新打开回到「已回复」，保留摘要，收到新追问才开始任务。运行中、有排队项或状态未确认时暂不可手动标记。
 - **精简提示与交接。** 合并重复规则，首次设置和旧串操作按需读取，同串续派只交接本轮变化。相对 v1.3 精简前的草稿，每轮角色提示从 411 字符减至 295 字符，三份规则文档合计从 10,587 字符减至 6,713 字符。授权、队列、回执、状态和导航约定继续适用。尚无实际 Token 用量对比。
 
-解压 macOS ZIP 后运行 `python3 install.py`。安装元数据里的 `1.3.0` 对应对外版本及标签 `v1.3`。Windows 下载在 macOS v1.2.1 发布后已单独更新至 v1.1.0，本次继续提供该安装包。
+解压 macOS ZIP 后运行 `python3 install.py`。安装元数据里的 `1.3.0` 对应对外版本及标签 `v1.3`。Windows 当前可下载版本为 v1.2.1。
 
 已有验证覆盖本机隔离环境中的入队、独立新回合和重复请求，以及面板状态相关检查。Codex 桌面端从点选插件到接入旧串、实际派工与右栏菜单点按尚未完成实测。v1.3 尚无 Windows 真机验证。
 
@@ -56,15 +54,19 @@ Extract the macOS ZIP and run `python3 install.py`. The installed sidebar was ch
 - **Distinguish replies from completed work in the sidebar.** Threads awaiting an answer or blocked appear under **等你回复** (Waiting for you). Queued and preparing work appears under **待执行** (Pending). Each row shows a title, up to two lines of summary, and a time. It uses the current turn's recorded progress or delivery, or the first line of the task when there is no summary. Use the **⋯** menu to mark a replied thread complete or reopen a completed one. Reopening returns it to **已回复** (Replied), keeps its summary, and waits for a follow-up before any work starts. Manual changes require an idle worker with a confirmed turn and no queued tasks.
 - **Shorter prompts and handoffs.** The rules remove repeated instructions, keep setup and chat management details available on demand, and pass along the changes for each follow-up. Compared with the earlier v1.3 draft, the per-turn role prompt went from 411 to 295 characters and the three rule files from 10,587 to 6,713 characters. The rules for authorization, the queue, receipts, status, and links still apply. Actual token usage has yet to be measured.
 
-Extract the macOS ZIP and run `python3 install.py`. The installer metadata shows `1.3.0` for the release and tag named `v1.3`. The separate Windows download moved to v1.1.0 after the macOS v1.2.1 release and remains available.
+Extract the macOS ZIP and run `python3 install.py`. The installer metadata shows `1.3.0` for the release and tag named `v1.3`. The current Windows download is v1.2.1.
 
 Previous checks covered queueing, independent turns, and repeated requests in an isolated local environment, as well as sidebar status handling. The full desktop flow from selecting the plugin through adding chats, dispatching work, and using the sidebar menu has yet to be tested. v1.3 has yet to be tested on Windows.
 
 ![v1.3 右栏使用示例数据 · v1.3 sidebar with fictional data](docs/images/panel-preview-v1.3.png)
 
-## 1.2.1 · macOS
+## 1.2.1 · macOS / Windows
 
-[macOS v1.2.1（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-macos.zip) · [Windows v1.1.0（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip)
+[macOS v1.2.1（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-macos.zip) · [Windows v1.2.1（ZIP）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-windows.zip)
+
+Windows 安装包来自 momo-land 验证的提交 [`c1eb6dd`](https://github.com/ylimingtju/thread-for-codex/tree/c1eb6dd0d83b2fdb722032454e4ea4e3568649f5)。Windows 11 实测覆盖从 v1.1.0 升级保留已有登记，以及登录桌面端后的设置、派工和回执跳转。[实测记录](https://github.com/ylimingtju/thread-for-codex/pull/3)
+
+The Windows ZIP uses commit [`c1eb6dd`](https://github.com/ylimingtju/thread-for-codex/tree/c1eb6dd0d83b2fdb722032454e4ea4e3568649f5). On Windows 11, momo-land verified that an upgrade from v1.1.0 kept existing chat registrations, and tested setup, assignment, and receipt links in the signed-in desktop app. [Test results](https://github.com/ylimingtju/thread-for-codex/pull/3)
 
 ### 中文
 
@@ -124,11 +126,11 @@ After upgrading, review and trust the plugin’s `SessionStart`, `UserPromptSubm
 
 ## 1.1.0 · macOS / Windows
 
-[下载 macOS v1.1.0 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-macos.zip) · [下载 Windows v1.1.0 / Download for Windows](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip)
+[下载 macOS v1.1.0 / Download for macOS](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-macos.zip) · [当前 Windows 下载 / Current Windows download](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-windows.zip)
 
-Windows 安装包来自提交 `5bd50f4`。安装、升级和返回链接已有 Windows 11 测试记录，登录桌面后的人工点按仍待确认。[更新说明、测试记录与使用指南](docs/release-v1.1.0.md#zh)
+当时的 Windows 安装包来自提交 `5bd50f4`。安装、升级和返回链接已有 Windows 11 测试记录，登录桌面后的人工点按仍待确认。[更新说明、测试记录与使用指南](docs/release-v1.1.0.md#zh)
 
-The Windows ZIP uses commit `5bd50f4`. Installation, upgrades, and worker return links were tested on Windows 11. A click-through in the signed-in desktop app is pending. [Release notes, test results, and user guide](docs/release-v1.1.0.md#en)
+The Windows v1.1.0 ZIP used commit `5bd50f4`. Installation, upgrades, and worker return links were tested on Windows 11. A click-through in the signed-in desktop app is pending. [Release notes, test results, and user guide](docs/release-v1.1.0.md#en)
 
 总讨论直接回答有明确出处的已有结论，把需要新判断或修改的工作分派给执行串。续派时沿用原串上下文，回报时概括本轮结果并保留原串入口。九个专项技能仍可按需调用，普通派工省去流程声明和重复记录。新旧执行串在每条面向用户的答复末尾提供「← 返回总讨论」链接。
 

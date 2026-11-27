@@ -8,11 +8,11 @@
 | Platform | Available version | Installer |
 | --- | --- | --- |
 | macOS | **v1.4.0** | [Download ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.4.0/thread-for-codex-macos.zip) |
-| Windows | **v1.1.0** | [Download ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip) |
+| Windows | **v1.2.1** | [Download ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-windows.zip) |
 
 [Installation instructions](#install-and-start) · [v1.4.0 release notes](CHANGELOG.md#v140--macos) · [Earlier benchmarks and FAQ](docs/release-v1.1.0.md#en)
 
-The instructions below for assignments, shared decisions, and the sidebar describe macOS v1.4.0. The published Windows version is v1.1.0.
+The instructions below for assignments, shared decisions, and the sidebar describe macOS v1.4.0. The published Windows version is v1.2.1.
 
 ![Thread for Codex — One project chat. Parallel threads.](docs/images/github-cover.jpg)
 
@@ -28,7 +28,7 @@ The main chat records each worker's standing responsibilities and the project's 
 
 You need a signed-in Codex desktop app, a Codex CLI that supports `codex plugin`, and Python 3.9 or later. The plugin uses only the Python standard library.
 
-1. Download the ZIP for your system above and extract it. On macOS, you can also check out the `v1.4.0` tag with Git. The Windows ZIP uses commit `5bd50f4`, tested on Windows 11. On macOS, choose a folder you plan to keep. Run the command for your system from the source folder.
+1. Download the ZIP for your system above and extract it. On macOS, you can also check out the `v1.4.0` tag with Git. momo-land tested the Windows ZIP from commit [`c1eb6dd`](https://github.com/ylimingtju/thread-for-codex/tree/c1eb6dd0d83b2fdb722032454e4ea4e3568649f5) on Windows 11. [Windows test results](https://github.com/ylimingtju/thread-for-codex/pull/3) On macOS, choose a folder you plan to keep. Run the command for your system from the source folder.
 
    | System | Install command |
    | --- | --- |

@@ -8,11 +8,11 @@ Inspired by Claude Projects, Thread for Codex lets you delegate tasks from one p
 | 系统 | 可下载版本 | 安装包 |
 | --- | --- | --- |
 | macOS | **v1.4.0** | [下载 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.4.0/thread-for-codex-macos.zip) |
-| Windows | **v1.1.0** | [下载 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip) |
+| Windows | **v1.2.1** | [下载 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-windows.zip) |
 
 [安装说明](#安装与启动) · [v1.4.0 更新说明](CHANGELOG.md#v140--macos) · [早期版本实测与常见问题](docs/release-v1.1.0.md#zh)
 
-下文的派工、项目决定同步和面板操作说明适用于 macOS v1.4.0。Windows 当前发布版本为 v1.1.0。
+下文的派工、项目决定同步和面板操作说明适用于 macOS v1.4.0。Windows 当前发布版本为 v1.2.1。
 
 ![Thread for Codex：主线统筹，分线追问](docs/images/github-cover.jpg)
 
@@ -28,7 +28,7 @@ Thread for Codex 是适用于 macOS 和 Windows 的 Codex 项目讨论串插件�
 
 需要已登录的 Codex 桌面端、支持 `codex plugin` 的 Codex 命令行，以及 Python 3.9 或以上。Python 部分只使用标准库。
 
-1. 从上方下载对应系统的 ZIP 并解压。macOS 也可用 Git 检出标签 `v1.4.0`。Windows ZIP 使用经过 Windows 11 测试的提交 `5bd50f4`。在源码根目录运行对应命令。macOS 用户请选一个准备长期保留的目录。
+1. 从上方下载对应系统的 ZIP 并解压。macOS 也可用 Git 检出标签 `v1.4.0`。Windows ZIP 来自 momo-land 在 Windows 11 上验证的提交 [`c1eb6dd`](https://github.com/ylimingtju/thread-for-codex/tree/c1eb6dd0d83b2fdb722032454e4ea4e3568649f5)。[Windows 实测记录](https://github.com/ylimingtju/thread-for-codex/pull/3)在源码根目录运行对应命令。macOS 用户请选一个准备长期保留的目录。
 
    | 系统 | 安装命令 |
    | --- | --- |

@@ -6,7 +6,7 @@
 
 ## 中文
 
-**Windows v1.1.0 已发布。** 安装包来自提交 `5bd50f4`。momo-land 已在 Windows 11 上验证全新安装、重装、从 v1.0.4 升级保留讨论串，以及执行串的返回链接规则。解压 ZIP 后，在含有 `install.py` 的目录运行 `py -3 .\install.py`。登录桌面后派工、打开旧串和点回总讨论仍待确认。[Windows v1.1.0 安装包](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip) · [macOS v1.1.0](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-macos.zip) · [Windows 测试记录](https://github.com/ylimingtju/thread-for-codex/pull/3)
+**Windows v1.1.0 发布记录。** 当时的安装包来自提交 `5bd50f4`。momo-land 已在 Windows 11 上验证全新安装、重装、从 v1.0.4 升级保留讨论串，以及执行串的返回链接规则。解压 ZIP 后，在含有 `install.py` 的目录运行 `py -3 .\install.py`。登录桌面后派工、打开旧串和点回总讨论仍待确认。[当前 Windows 安装包（v1.2.1）](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-windows.zip) · [macOS v1.1.0](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-macos.zip) · [Windows 测试记录](https://github.com/ylimingtju/thread-for-codex/pull/3)
 
 在总讨论里交代任务，到执行串里看细节、继续追问。v1.1.0 改了交接方式。执行串交付后，总讨论先确认答复属于本轮任务。结论和依据齐全时，它直接汇总；答复有截断或对应不上本轮任务时，它会回原串核对。
 
@@ -37,7 +37,7 @@
 
 ## English
 
-**Windows v1.1.0 is available.** The ZIP uses commit `5bd50f4`. On Windows 11, momo-land verified fresh installation, reinstallation, an upgrade from v1.0.4 that preserved registered chats, and the worker return-link hook. Extract the ZIP and run `py -3 .\install.py` from the folder containing `install.py`. Assignment, sidebar navigation, and the return link still need a click-through in the signed-in desktop app. [Windows v1.1.0 ZIP](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-windows.zip) · [macOS v1.1.0](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-macos.zip) · [Windows test results](https://github.com/ylimingtju/thread-for-codex/pull/3)
+**Windows v1.1.0 release record.** Its ZIP used commit `5bd50f4`. On Windows 11, momo-land verified fresh installation, reinstallation, an upgrade from v1.0.4 that preserved registered chats, and the worker return-link hook. Extract the ZIP and run `py -3 .\install.py` from the folder containing `install.py`. Assignment, sidebar navigation, and the return link still need a click-through in the signed-in desktop app. [Current Windows ZIP (v1.2.1)](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.2.1/thread-for-codex-windows.zip) · [macOS v1.1.0](https://github.com/ylimingtju/thread-for-codex/releases/download/v1.1.0/thread-for-codex-macos.zip) · [Windows test results](https://github.com/ylimingtju/thread-for-codex/pull/3)
 
 Give an assignment in the main chat, then open the worker chat to see the detail or ask a follow-up. In v1.1.0, the main chat checks that the reply belongs to the current assignment. When the reply includes the conclusion and the evidence it needs, it summarizes it directly. If the reply is cut off or belongs to a different turn, it opens the worker chat to check.
 
